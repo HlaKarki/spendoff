@@ -11,3 +11,7 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+# Design docs — kept local, not published (reference internal hla-backend)
+docs/
+.dev.vars*

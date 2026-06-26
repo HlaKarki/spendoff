@@ -129,4 +129,5 @@ export const api = {
     apiFetch<{ ok: boolean }>("/push/subscribe", { method: "POST", json }),
   pushUnsubscribe: (json: { endpoint: string }) =>
     apiFetch<{ ok: boolean }>("/push/unsubscribe", { method: "POST", json }),
+  notifyTest: () => apiFetch<{ ok: boolean; channel: "push" | "email" | "none" }>("/notify/test", { method: "POST" }),
 };

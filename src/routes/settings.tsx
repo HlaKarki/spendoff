@@ -25,6 +25,8 @@ function Settings() {
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+  const [testBusy, setTestBusy] = useState(false);
 
   useEffect(() => {
     if (isPushSupported()) currentPushSubscription().then((s) => setPushOn(!!s));
@@ -44,6 +46,25 @@ function Settings() {
       }
     } finally {
       setPushBusy(false);
+    }
+  }
+
+  async function sendTest() {
+    setTestBusy(true);
+    setTestMsg(null);
+    try {
+      const res = await api.notifyTest();
+      setTestMsg(
+        res.channel === "push"
+          ? "Sent as a push notification ✓"
+          : res.channel === "email"
+            ? "Sent to your email ✓ (check inbox/spam)"
+            : "Couldn't send — check your setup.",
+      );
+    } catch {
+      setTestMsg("Couldn't send right now.");
+    } finally {
+      setTestBusy(false);
     }
   }
 
@@ -84,8 +105,12 @@ function Settings() {
           </span>
         </button>
         {pushMsg && <p className="text-sm text-danger">{pushMsg}</p>}
+        <button onClick={sendTest} disabled={testBusy} className="btn-outline w-full py-3 text-sm">
+          {testBusy ? "Sending…" : "Send a test notification"}
+        </button>
+        {testMsg && <p className="text-sm text-muted">{testMsg}</p>}
         <p className="text-xs text-faint">
-          On iPhone, add Spendoff to your Home Screen first to receive notifications.
+          On iPhone, add Spendoff to your Home Screen first to receive push. Otherwise notifications arrive by email.
         </p>
       </section>
 

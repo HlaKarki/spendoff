@@ -103,7 +103,12 @@ function Sheet({ kind, onClose }: { kind: "create" | "join"; onClose: () => void
         {kind === "create" ? (
           <>
             <label className="label mb-1.5 block">Battle name</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sibling Showdown" />
+            <input
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Sibling Showdown"
+            />
           </>
         ) : (
           <>

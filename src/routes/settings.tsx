@@ -67,7 +67,11 @@ function Settings() {
 
       <section className="space-y-2">
         <h2 className="label">Notifications</h2>
-        <button onClick={togglePush} disabled={pushBusy} className="card flex w-full items-center justify-between px-4 py-4">
+        <button
+          onClick={togglePush}
+          disabled={pushBusy}
+          className="card flex w-full items-center justify-between px-4 py-4"
+        >
           <div className="flex items-center gap-3">
             {pushOn ? <Bell className="size-5 text-accent" /> : <BellOff className="size-5 text-faint" />}
             <div className="text-left">
@@ -80,7 +84,9 @@ function Settings() {
           </span>
         </button>
         {pushMsg && <p className="text-sm text-danger">{pushMsg}</p>}
-        <p className="text-xs text-faint">On iPhone, add Spendoff to your Home Screen first to receive notifications.</p>
+        <p className="text-xs text-faint">
+          On iPhone, add Spendoff to your Home Screen first to receive notifications.
+        </p>
       </section>
 
       <button onClick={signOut} className="btn-ghost w-full py-3 text-danger">

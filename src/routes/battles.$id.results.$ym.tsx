@@ -125,7 +125,9 @@ function CategoryRow({
                 style={{ width: `${(p.totalCents / max) * 100}%` }}
               />
             </div>
-            <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">{money(p.totalCents, snap.currency)}</span>
+            <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+              {money(p.totalCents, snap.currency)}
+            </span>
           </div>
         ))}
       </div>
@@ -143,13 +145,17 @@ function Trends({ snap, nameOf }: { snap: MonthlyResultSnapshot; nameOf: (uid: s
         {t.biggestSplurge && (
           <StatCard icon={<Flame className="size-4 text-danger" />} label="Biggest splurge">
             {money(t.biggestSplurge.amountCents, snap.currency)}
-            <span className="block text-xs font-normal text-faint">{nameOf(t.biggestSplurge.userId)} · {t.biggestSplurge.label}</span>
+            <span className="block text-xs font-normal text-faint">
+              {nameOf(t.biggestSplurge.userId)} · {t.biggestSplurge.label}
+            </span>
           </StatCard>
         )}
         {t.mostExpensiveDay && (
           <StatCard icon={<TrendingUp className="size-4 text-gold" />} label="Priciest day">
             {money(t.mostExpensiveDay.totalCents, snap.currency)}
-            <span className="block text-xs font-normal text-faint">{nameOf(t.mostExpensiveDay.userId)} · {t.mostExpensiveDay.date.slice(5)}</span>
+            <span className="block text-xs font-normal text-faint">
+              {nameOf(t.mostExpensiveDay.userId)} · {t.mostExpensiveDay.date.slice(5)}
+            </span>
           </StatCard>
         )}
         {t.winStreaks.map((w) => (

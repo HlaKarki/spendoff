@@ -53,12 +53,7 @@ function BottomNav() {
             const Icon = item.icon;
             if (item.accent) {
               return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="flex flex-col items-center gap-1"
-                  aria-label="Log a spend"
-                >
+                <Link key={item.to} to={item.to} className="flex flex-col items-center gap-1" aria-label="Log a spend">
                   <span className="flex size-11 items-center justify-center rounded-2xl bg-accent text-accent-fg shadow-lg shadow-accent/20 transition active:scale-95">
                     <Icon className="size-6" strokeWidth={2.8} />
                   </span>

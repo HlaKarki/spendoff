@@ -123,7 +123,9 @@ function BattleDetail() {
             </button>
           ))}
         </div>
-        {detail.data.win_rule === "most_under_budget" && <BudgetEditor id={id} ym={ym} current={detail.data.my_budget_cents} />}
+        {detail.data.win_rule === "most_under_budget" && (
+          <BudgetEditor id={id} ym={ym} current={detail.data.my_budget_cents} />
+        )}
       </section>
 
       {/* Members */}
@@ -166,7 +168,14 @@ function BattleDetail() {
   );
 }
 
-function WinnerChip({ result }: { result: { winner_user_id: string | null; snapshot: { standings: { userId: string; displayName: string }[]; isTie: boolean } } }) {
+function WinnerChip({
+  result,
+}: {
+  result: {
+    winner_user_id: string | null;
+    snapshot: { standings: { userId: string; displayName: string }[]; isTie: boolean };
+  };
+}) {
   if (result.snapshot.isTie) return <span className="text-xs text-faint">Tie</span>;
   const w = result.snapshot.standings.find((s) => s.userId === result.winner_user_id);
   return <span className="text-xs font-semibold text-accent">{w ? `${w.displayName} 🏆` : "—"}</span>;

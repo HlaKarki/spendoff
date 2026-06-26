@@ -1,15 +1,9 @@
-import type {
-  Battle,
-  BattleDetail,
-  Category,
-  Expense,
-  MonthlyResult,
-  StandingsResult,
-  User,
-  WinRule,
-} from "./types";
+import type { Battle, BattleDetail, Category, Expense, MonthlyResult, StandingsResult, User, WinRule } from "./types";
 
-const BASE = "/api/v1/spendoff";
+// Same-origin by default (dev: Vite proxy → :8787; prod: same-origin proxy / service binding).
+// Set VITE_API_BASE to the backend origin if you instead call it cross-origin (needs CORS+credentials).
+const API_ORIGIN = import.meta.env.VITE_API_BASE ?? "";
+const BASE = `${API_ORIGIN}/api/v1/spendoff`;
 
 export class ApiError extends Error {
   status: number;
@@ -97,8 +91,15 @@ export const api = {
       json,
       headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
     }),
-  syncExpenses: (items: Array<{ client_id: string; amount_cents: number; category_id: string; note?: string | null; spent_at?: string }>) =>
-    apiFetch<{ synced: number; expenses: Expense[] }>("/expenses/sync", { method: "POST", json: { items } }),
+  syncExpenses: (
+    items: Array<{
+      client_id: string;
+      amount_cents: number;
+      category_id: string;
+      note?: string | null;
+      spent_at?: string;
+    }>,
+  ) => apiFetch<{ synced: number; expenses: Expense[] }>("/expenses/sync", { method: "POST", json: { items } }),
   listExpenses: (params?: { year_month?: string; category_id?: string; limit?: number; cursor?: string }) => {
     const q = new URLSearchParams();
     if (params?.year_month) q.set("year_month", params.year_month);
@@ -108,8 +109,10 @@ export const api = {
     const qs = q.toString();
     return apiFetch<{ expenses: Expense[]; next_cursor: string | null }>(`/expenses${qs ? `?${qs}` : ""}`);
   },
-  updateExpense: (id: string, json: { amount_cents?: number; category_id?: string; note?: string | null; spent_at?: string }) =>
-    apiFetch<{ expense: Expense }>(`/expenses/${id}`, { method: "PATCH", json }),
+  updateExpense: (
+    id: string,
+    json: { amount_cents?: number; category_id?: string; note?: string | null; spent_at?: string },
+  ) => apiFetch<{ expense: Expense }>(`/expenses/${id}`, { method: "PATCH", json }),
   deleteExpense: (id: string) => apiFetch<{ ok: boolean }>(`/expenses/${id}`, { method: "DELETE" }),
 
   // ── Standings & results ───────────────────────────────────────────────────
@@ -117,7 +120,8 @@ export const api = {
     apiFetch<StandingsResult>(`/battles/${id}/standings${ym ? `?year_month=${ym}` : ""}`),
   listResults: (id: string) => apiFetch<{ results: MonthlyResult[] }>(`/battles/${id}/results`),
   getResult: (id: string, ym: string) => apiFetch<{ result: MonthlyResult }>(`/battles/${id}/results/${ym}`),
-  closeMonth: (id: string, ym: string) => apiFetch<{ result: MonthlyResult }>(`/battles/${id}/close/${ym}`, { method: "POST" }),
+  closeMonth: (id: string, ym: string) =>
+    apiFetch<{ result: MonthlyResult }>(`/battles/${id}/close/${ym}`, { method: "POST" }),
 
   // ── Push ──────────────────────────────────────────────────────────────────
   pushPublicKey: () => apiFetch<{ public_key: string }>("/push/public-key"),

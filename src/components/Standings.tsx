@@ -17,7 +17,14 @@ export function StandingsRows({
   return (
     <div className="space-y-2">
       {standings.map((s) => (
-        <Row key={s.userId} s={s} isMe={s.userId === meId} isWinner={s.userId === winnerUserId} currency={currency} showUnder={showRule} />
+        <Row
+          key={s.userId}
+          s={s}
+          isMe={s.userId === meId}
+          isWinner={s.userId === winnerUserId}
+          currency={currency}
+          showUnder={showRule}
+        />
       ))}
     </div>
   );
@@ -69,7 +76,9 @@ function Row({
         </div>
         {showUnder && s.underBudgetCents !== null && (
           <div className="text-xs tabular-nums text-faint">
-            {s.underBudgetCents >= 0 ? `${money(s.underBudgetCents, currency)} under` : `${money(-s.underBudgetCents, currency)} over`}
+            {s.underBudgetCents >= 0
+              ? `${money(s.underBudgetCents, currency)} under`
+              : `${money(-s.underBudgetCents, currency)} over`}
           </div>
         )}
       </div>

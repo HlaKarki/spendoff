@@ -71,7 +71,9 @@ function LogScreen() {
 
       {/* Amount */}
       <div className="flex flex-1 flex-col items-center justify-center py-2">
-        <div className={cn("font-display font-black tabular-nums transition-colors", cents > 0 ? "text-fg" : "text-faint")}>
+        <div
+          className={cn("font-display font-black tabular-nums transition-colors", cents > 0 ? "text-fg" : "text-faint")}
+        >
           <span className="text-6xl">{money(cents)}</span>
         </div>
       </div>

@@ -48,7 +48,7 @@ function BattlesScreen() {
 
       <div className="space-y-3">
         {battles.data?.map((b) => (
-          <Link key={b.id} to="/battles/$id" params={{ id: b.id }}>
+          <Link key={b.id} to="/battles/$id" params={{ id: b.id }} className="block">
             <div className="card flex items-center justify-between px-4 py-4 transition active:scale-[0.99]">
               <div>
                 <div className="font-semibold">{b.name}</div>

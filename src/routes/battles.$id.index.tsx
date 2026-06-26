@@ -150,7 +150,7 @@ function BattleDetail() {
           <h2 className="label">Past months</h2>
           <div className="space-y-2">
             {results.data.map((r) => (
-              <Link key={r.year_month} to="/battles/$id/results/$ym" params={{ id, ym: r.year_month }}>
+              <Link key={r.year_month} to="/battles/$id/results/$ym" params={{ id, ym: r.year_month }} className="block">
                 <div className="card flex items-center justify-between px-4 py-3 transition active:scale-[0.99]">
                   <span className="font-semibold">{formatMonthShort(r.year_month)}</span>
                   <WinnerChip result={r} />

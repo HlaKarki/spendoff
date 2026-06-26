@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { api, ApiError } from "../lib/api";
 import { browserTimezone } from "../lib/format";
+import type { User } from "../lib/types";
 
 export const Route = createFileRoute("/onboard")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -25,9 +26,11 @@ function Onboard() {
   const [error, setError] = useState<string | null>(null);
   const [magicSent, setMagicSent] = useState<string | null>(null);
 
-  async function done() {
-    await qc.invalidateQueries({ queryKey: ["me"] });
-    navigate({ to: redirect || "/" });
+  // Seed the user into the cache synchronously (no refetch race), then go somewhere safe.
+  function finishAuth(user: User) {
+    qc.setQueryData(["me"], user);
+    const safe = redirect && !redirect.startsWith("/onboard") && !redirect.startsWith("/auth") ? redirect : "/";
+    navigate({ to: safe });
   }
 
   async function createAccount() {
@@ -41,8 +44,8 @@ function Onboard() {
         timezone: browserTimezone(),
       });
       const attResp = await startRegistration({ optionsJSON: optionsJSON as never });
-      await api.registerVerify({ response: attResp });
-      await done();
+      const { user } = await api.registerVerify({ response: attResp });
+      finishAuth(user);
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -56,8 +59,8 @@ function Onboard() {
     try {
       const optionsJSON = await api.loginOptions({ email: email.trim() || undefined });
       const asseResp = await startAuthentication({ optionsJSON: optionsJSON as never });
-      await api.loginVerify({ response: asseResp });
-      await done();
+      const { user } = await api.loginVerify({ response: asseResp });
+      finishAuth(user);
     } catch (e) {
       setError(errMsg(e));
     } finally {

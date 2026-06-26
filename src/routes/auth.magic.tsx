@@ -24,8 +24,8 @@ function MagicConsume() {
         return;
       }
       try {
-        await api.magicVerify({ token });
-        await qc.invalidateQueries({ queryKey: ["me"] });
+        const { user } = await api.magicVerify({ token });
+        qc.setQueryData(["me"], user);
         navigate({ to: "/" });
       } catch (e) {
         setError(e instanceof Error ? e.message : "This link is invalid or expired.");

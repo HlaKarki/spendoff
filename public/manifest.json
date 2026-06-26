@@ -1,25 +1,18 @@
 {
-  "short_name": "TanStack App",
-  "name": "Create TanStack App Sample",
-  "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
-  ],
-  "start_url": ".",
+  "name": "Spendoff — spend less, win",
+  "short_name": "Spendoff",
+  "description": "Log your spending, settle it monthly. Spend less, win.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#0a0a0b",
+  "background_color": "#0a0a0b",
+  "categories": ["finance", "lifestyle"],
+  "icons": [
+    { "src": "/logo192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/logo512.png", "type": "image/png", "sizes": "512x512" },
+    { "src": "/logo512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
 }

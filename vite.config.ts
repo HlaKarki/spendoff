@@ -10,6 +10,15 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  server: {
+    // Proxy the Spendoff API to the hla-backend dev server (same-origin from the browser).
+    proxy: {
+      "/api/v1/spendoff": {
+        target: "http://localhost:8787",
+        changeOrigin: false,
+      },
+    },
+  },
   plugins: [
     devtools(),
     cloudflare({ viteEnvironment: { name: "ssr" } }),

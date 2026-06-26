@@ -1,0 +1,50 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../lib/api";
+
+export const Route = createFileRoute("/auth/magic")({
+  validateSearch: (s: Record<string, unknown>) => ({ token: typeof s.token === "string" ? s.token : "" }),
+  component: MagicConsume,
+});
+
+function MagicConsume() {
+  const { token } = Route.useSearch();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const ran = useRef(false);
+
+  useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+    (async () => {
+      if (!token) {
+        setError("Missing sign-in token.");
+        return;
+      }
+      try {
+        await api.magicVerify({ token });
+        await qc.invalidateQueries({ queryKey: ["me"] });
+        navigate({ to: "/" });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "This link is invalid or expired.");
+      }
+    })();
+  }, [token, navigate, qc]);
+
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+      {error ? (
+        <>
+          <p className="text-lg font-semibold text-danger">{error}</p>
+          <a href="/onboard" className="btn-primary mt-5 px-6 py-3">
+            Back to sign in
+          </a>
+        </>
+      ) : (
+        <p className="animate-pulse text-muted">Signing you in…</p>
+      )}
+    </div>
+  );
+}

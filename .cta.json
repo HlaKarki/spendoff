@@ -1,0 +1,17 @@
+{
+  "projectName": "spendoff",
+  "mode": "file-router",
+  "typescript": true,
+  "tailwind": true,
+  "packageManager": "bun",
+  "git": true,
+  "install": true,
+  "intent": false,
+  "addOnOptions": {},
+  "includeExamples": false,
+  "envVarValues": {},
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": ["cloudflare", "compiler", "shadcn", "tanstack-query", "t3env"]
+}

@@ -14,6 +14,7 @@ import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BattlesIndexRouteImport } from './routes/battles.index'
+import { Route as BattlesIdRouteImport } from './routes/battles.$id'
 import { Route as AuthMagicRouteImport } from './routes/auth.magic'
 import { Route as BattlesIdIndexRouteImport } from './routes/battles.$id.index'
 import { Route as BattlesIdResultsYmRouteImport } from './routes/battles.$id.results.$ym'
@@ -43,15 +44,20 @@ const BattlesIndexRoute = BattlesIndexRouteImport.update({
   path: '/battles/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BattlesIdRoute = BattlesIdRouteImport.update({
+  id: '/battles/$id',
+  path: '/battles/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthMagicRoute = AuthMagicRouteImport.update({
   id: '/auth/magic',
   path: '/auth/magic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BattlesIdIndexRoute = BattlesIdIndexRouteImport.update({
-  id: '/battles/$id/',
-  path: '/battles/$id/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => BattlesIdRoute,
 } as any)
 const BattlesIdResultsYmRoute = BattlesIdResultsYmRouteImport.update({
   id: '/results/$ym',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/onboard': typeof OnboardRoute
   '/settings': typeof SettingsRoute
   '/auth/magic': typeof AuthMagicRoute
+  '/battles/$id': typeof BattlesIdRouteWithChildren
   '/battles/': typeof BattlesIndexRoute
   '/battles/$id/': typeof BattlesIdIndexRoute
   '/battles/$id/results/$ym': typeof BattlesIdResultsYmRoute
@@ -86,6 +93,7 @@ export interface FileRoutesById {
   '/onboard': typeof OnboardRoute
   '/settings': typeof SettingsRoute
   '/auth/magic': typeof AuthMagicRoute
+  '/battles/$id': typeof BattlesIdRouteWithChildren
   '/battles/': typeof BattlesIndexRoute
   '/battles/$id/': typeof BattlesIdIndexRoute
   '/battles/$id/results/$ym': typeof BattlesIdResultsYmRoute
@@ -98,6 +106,7 @@ export interface FileRouteTypes {
     | '/onboard'
     | '/settings'
     | '/auth/magic'
+    | '/battles/$id'
     | '/battles/'
     | '/battles/$id/'
     | '/battles/$id/results/$ym'
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/onboard'
     | '/settings'
     | '/auth/magic'
+    | '/battles/$id'
     | '/battles/'
     | '/battles/$id/'
     | '/battles/$id/results/$ym'
@@ -129,8 +139,8 @@ export interface RootRouteChildren {
   OnboardRoute: typeof OnboardRoute
   SettingsRoute: typeof SettingsRoute
   AuthMagicRoute: typeof AuthMagicRoute
+  BattlesIdRoute: typeof BattlesIdRouteWithChildren
   BattlesIndexRoute: typeof BattlesIndexRoute
-  BattlesIdIndexRoute: typeof BattlesIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -170,6 +180,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BattlesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/battles/$id': {
+      id: '/battles/$id'
+      path: '/battles/$id'
+      fullPath: '/battles/$id'
+      preLoaderRoute: typeof BattlesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/magic': {
       id: '/auth/magic'
       path: '/auth/magic'
@@ -179,10 +196,10 @@ declare module '@tanstack/react-router' {
     }
     '/battles/$id/': {
       id: '/battles/$id/'
-      path: '/battles/$id'
+      path: '/'
       fullPath: '/battles/$id/'
       preLoaderRoute: typeof BattlesIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof BattlesIdRoute
     }
     '/battles/$id/results/$ym': {
       id: '/battles/$id/results/$ym'
@@ -194,14 +211,28 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface BattlesIdRouteChildren {
+  BattlesIdIndexRoute: typeof BattlesIdIndexRoute
+  BattlesIdResultsYmRoute: typeof BattlesIdResultsYmRoute
+}
+
+const BattlesIdRouteChildren: BattlesIdRouteChildren = {
+  BattlesIdIndexRoute: BattlesIdIndexRoute,
+  BattlesIdResultsYmRoute: BattlesIdResultsYmRoute,
+}
+
+const BattlesIdRouteWithChildren = BattlesIdRoute._addFileChildren(
+  BattlesIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LogRoute: LogRoute,
   OnboardRoute: OnboardRoute,
   SettingsRoute: SettingsRoute,
   AuthMagicRoute: AuthMagicRoute,
+  BattlesIdRoute: BattlesIdRouteWithChildren,
   BattlesIndexRoute: BattlesIndexRoute,
-  BattlesIdIndexRoute: BattlesIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

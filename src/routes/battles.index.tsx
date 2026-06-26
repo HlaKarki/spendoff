@@ -7,7 +7,7 @@ import { ClientOnly } from "../components/ClientOnly";
 import { api, ApiError } from "../lib/api";
 import { useBattles } from "../lib/queries";
 
-export const Route = createFileRoute("/battles")({
+export const Route = createFileRoute("/battles/")({
   component: () => (
     <ClientOnly>
       <AppShell>

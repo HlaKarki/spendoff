@@ -11,7 +11,7 @@ import { useBattle, useMe, useResults, useStandings } from "../lib/queries";
 import type { WinRule } from "../lib/types";
 import { cn } from "../lib/utils";
 
-export const Route = createFileRoute("/battles/$id")({
+export const Route = createFileRoute("/battles/$id/")({
   component: () => (
     <ClientOnly>
       <AppShell>

@@ -3,6 +3,7 @@
   "name": "spendoff",
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "./src/server.ts",
   "observability": { "enabled": true },
+  "services": [{ "binding": "BACKEND", "service": "general-backend" }]
 }

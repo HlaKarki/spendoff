@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Check, Copy, LogOut, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { StandingsRows } from "../components/Standings";
 import { api } from "../lib/api";
-import { formatMonth, formatMonthShort, money, relativeDay } from "../lib/format";
+import { currentYearMonth, dayKey, formatMonth, formatMonthShort, money, relativeDay } from "../lib/format";
 import { useBattle, useCategories, useExpenses, useMe, useResults, useStandings } from "../lib/queries";
 import type { Category, Expense, WinRule } from "../lib/types";
 import { cn } from "../lib/utils";
@@ -172,34 +172,112 @@ function BattleDetail() {
   );
 }
 
+// Days of the battle month, oldest→newest, not past today for the current month.
+function monthDays(ym: string): string[] {
+  const [y, m] = ym.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  const cap = ym === currentYearMonth() ? new Date().getDate() : last;
+  return Array.from({ length: cap }, (_, i) => `${ym}-${String(i + 1).padStart(2, "0")}`);
+}
+
+function chipParts(key: string) {
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return { weekday: date.toLocaleDateString("en-US", { weekday: "short" }), day: d };
+}
+
 function MySpend({ id, ym, currency }: { id: string; ym: string; currency: string }) {
   const expenses = useExpenses({ year_month: ym });
   const categories = useCategories();
   const catFor = (categoryId: string) => categories.data?.find((c) => c.id === categoryId) ?? null;
-  const items = expenses.data?.pages.flatMap((p) => p.expenses) ?? [];
+  const byDay = useMemo(() => {
+    const m = new Map<string, Expense[]>();
+    for (const e of expenses.data ?? []) {
+      const k = dayKey(e.spent_at);
+      const arr = m.get(k);
+      if (arr) arr.push(e);
+      else m.set(k, [e]);
+    }
+    return m;
+  }, [expenses.data]);
+
+  const days = useMemo(() => monthDays(ym), [ym]);
+  const todayKey = dayKey(new Date().toISOString());
+  const [selected, setSelected] = useState(days.includes(todayKey) ? todayKey : days[days.length - 1]);
+
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const selRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const c = stripRef.current;
+    const el = selRef.current;
+    if (c && el) c.scrollLeft = el.offsetLeft - c.clientWidth / 2 + el.clientWidth / 2;
+  }, [expenses.isLoading]);
+
+  // oxlint-disable-next-line no-array-sort -- .slice() already copies before sorting
+  const dayItems = (byDay.get(selected) ?? []).slice().sort((a, b) => b.spent_at.localeCompare(a.spent_at));
+  const dayTotal = dayItems.reduce((s, e) => s + e.amount_cents, 0);
 
   return (
-    <section className="space-y-2">
+    <section className="space-y-3">
       <h2 className="label">Your spend</h2>
+
       {expenses.isLoading ? (
-        <div className="h-20 animate-pulse rounded-xl bg-surface" />
-      ) : items.length === 0 ? (
-        <p className="card px-4 py-3 text-sm text-muted">Nothing logged yet this month.</p>
+        <div className="h-28 animate-pulse rounded-xl bg-surface" />
       ) : (
         <>
-          <div className="card divide-y divide-line">
-            {items.map((e) => (
-              <ExpenseRow key={e.id} battleId={id} expense={e} category={catFor(e.category_id)} currency={currency} />
-            ))}
+          {/* Day switcher */}
+          <div
+            ref={stripRef}
+            className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {days.map((k) => {
+              const isSel = k === selected;
+              const has = byDay.has(k);
+              const { weekday, day } = chipParts(k);
+              return (
+                <button
+                  key={k}
+                  ref={isSel ? selRef : undefined}
+                  onClick={() => setSelected(k)}
+                  className={cn(
+                    "flex min-w-[3rem] shrink-0 flex-col items-center gap-0.5 rounded-xl border px-2 py-2 transition",
+                    isSel ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+                  )}
+                >
+                  <span className="text-[10px] font-semibold uppercase">{weekday}</span>
+                  <span className="text-base font-bold leading-none tabular-nums">{day}</span>
+                  <span
+                    className={cn(
+                      "mt-0.5 size-1.5 rounded-full",
+                      has ? (isSel ? "bg-accent" : "bg-faint") : "bg-transparent",
+                    )}
+                  />
+                </button>
+              );
+            })}
           </div>
-          {expenses.hasNextPage && (
-            <button
-              onClick={() => expenses.fetchNextPage()}
-              disabled={expenses.isFetchingNextPage}
-              className="btn-ghost w-full py-2.5 text-sm"
-            >
-              {expenses.isFetchingNextPage ? "Loading…" : "Load more"}
-            </button>
+
+          {/* Selected day summary */}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-sm font-semibold">{relativeDay(`${selected}T12:00:00`)}</span>
+            <span className="text-sm font-bold tabular-nums">{money(dayTotal, currency)}</span>
+          </div>
+
+          {/* Selected day entries */}
+          {dayItems.length === 0 ? (
+            <p className="card px-4 py-3 text-sm text-muted">No spend logged this day 👻</p>
+          ) : (
+            <div className="card divide-y divide-line">
+              {dayItems.map((e) => (
+                <ExpenseRow
+                  key={e.id}
+                  battleId={id}
+                  expense={e}
+                  category={catFor(e.category_id)}
+                  currency={currency}
+                />
+              ))}
+            </div>
           )}
         </>
       )}
@@ -263,7 +341,9 @@ function ExpenseRow({
         </div>
         <div className="text-right">
           <div className="font-semibold tabular-nums">{money(expense.amount_cents, currency)}</div>
-          <div className="text-xs text-faint">{relativeDay(expense.spent_at)}</div>
+          <div className="text-xs text-faint">
+            {new Date(expense.spent_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+          </div>
         </div>
       </button>
     );

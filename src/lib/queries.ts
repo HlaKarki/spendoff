@@ -1,5 +1,6 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
+import type { Expense } from "./types";
 
 export function useMe() {
   return useQuery({
@@ -65,11 +66,20 @@ export function useResult(id: string, yearMonth: string) {
   });
 }
 
+// Fetches every page for the month so the day view can group/switch client-side.
 export function useExpenses(params?: { year_month?: string }) {
-  return useInfiniteQuery({
+  return useQuery({
     queryKey: ["expenses", params?.year_month ?? "all"],
-    queryFn: ({ pageParam }) => api.listExpenses({ ...params, cursor: pageParam }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    queryFn: async () => {
+      const all: Expense[] = [];
+      let cursor: string | undefined;
+      do {
+        // oxlint-disable-next-line no-await-in-loop -- cursor pagination is inherently sequential
+        const page = await api.listExpenses({ ...params, cursor, limit: 100 });
+        all.push(...page.expenses);
+        cursor = page.next_cursor ?? undefined;
+      } while (cursor);
+      return all;
+    },
   });
 }

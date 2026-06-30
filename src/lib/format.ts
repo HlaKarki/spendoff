@@ -55,6 +55,12 @@ export function browserTimezone(): string {
   }
 }
 
+/** Local calendar day for an ISO timestamp, as "YYYY-MM-DD". */
+export function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function relativeDay(iso: string): string {
   const d = new Date(iso);
   const now = new Date();

@@ -1,15 +1,22 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { Delete, Check } from "lucide-react";
+import { Delete, Check, Repeat } from "lucide-react";
 import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
+import { api } from "../lib/api";
 import { money } from "../lib/format";
 import { logExpense } from "../lib/outbox";
 import { useCategories } from "../lib/queries";
 import { cn } from "../lib/utils";
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
+}
 
 export const Route = createFileRoute("/log")({
   component: () => (
@@ -30,8 +37,10 @@ function LogScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
+  const [repeat, setRepeat] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; offline: boolean } | null>(null);
+  const today = new Date().getDate();
 
   function press(k: (typeof KEYS)[number]) {
     if (k === "del") return setCents((c) => Math.floor(c / 10));
@@ -45,18 +54,34 @@ function LogScreen() {
     if (!canSave || !categoryId) return;
     setSaving(true);
     try {
-      const { online } = await logExpense({
-        client_id: crypto.randomUUID(),
-        amount_cents: cents,
-        category_id: categoryId,
-        note: note.trim() || null,
-        spent_at: new Date().toISOString(),
-      });
+      let offline = false;
+      if (repeat) {
+        // Creating the rule also materializes this month's entry server-side (one entry, no dupe).
+        await api.createRecurring({
+          amount_cents: cents,
+          category_id: categoryId,
+          note: note.trim() || null,
+          day_of_month: today,
+        });
+      } else {
+        const res = await logExpense({
+          client_id: crypto.randomUUID(),
+          amount_cents: cents,
+          category_id: categoryId,
+          note: note.trim() || null,
+          spent_at: new Date().toISOString(),
+        });
+        offline = !res.online;
+      }
       await qc.invalidateQueries();
-      setToast({ msg: `Logged ${money(cents)}`, offline: !online });
+      setToast({ msg: repeat ? `Logged ${money(cents)} · repeats monthly` : `Logged ${money(cents)}`, offline });
       setCents(0);
       setNote("");
       setShowNote(false);
+      setRepeat(false);
+      setTimeout(() => setToast(null), 2200);
+    } catch {
+      setToast({ msg: "Couldn't save — try again", offline: false });
       setTimeout(() => setToast(null), 2200);
     } finally {
       setSaving(false);
@@ -126,6 +151,23 @@ function LogScreen() {
           </button>
         ))}
       </div>
+
+      {/* Repeat monthly */}
+      <button
+        onClick={() => setRepeat((r) => !r)}
+        className="mt-3 flex w-full items-center justify-between rounded-xl bg-surface px-4 py-3"
+      >
+        <span className="flex items-center gap-2.5">
+          <Repeat className={cn("size-4", repeat ? "text-accent" : "text-faint")} />
+          <span className="text-left">
+            <span className={cn("block text-sm font-medium", repeat ? "text-fg" : "text-muted")}>Repeat monthly</span>
+            {repeat && <span className="block text-xs text-faint">Auto-logs on the {ordinal(today)} each month</span>}
+          </span>
+        </span>
+        <span className={cn("h-6 w-11 shrink-0 rounded-full p-0.5 transition", repeat ? "bg-accent" : "bg-surface-2")}>
+          <span className={cn("block size-5 rounded-full bg-fg transition", repeat && "translate-x-5")} />
+        </span>
+      </button>
 
       <button onClick={save} disabled={!canSave} className="btn-primary mt-3 w-full py-4 text-base">
         {saving ? "Saving…" : "Save"}

@@ -7,8 +7,16 @@ import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { StandingsRows } from "../components/Standings";
 import { api } from "../lib/api";
-import { currentYearMonth, dayKey, formatMonth, formatMonthShort, money, relativeDay } from "../lib/format";
-import { useBattle, useCategories, useExpenses, useMe, useResults, useStandings } from "../lib/queries";
+import { currentDayOfMonth, currentYearMonth, formatMonth, formatMonthShort, money, relativeDay } from "../lib/format";
+import {
+  useAnalytics,
+  useBattle,
+  useCategories,
+  useDayExpenses,
+  useMe,
+  useResults,
+  useStandings,
+} from "../lib/queries";
 import type { Category, Expense, WinRule } from "../lib/types";
 import { cn } from "../lib/utils";
 
@@ -178,10 +186,10 @@ function BattleDetail() {
 }
 
 // Days of the battle month, oldest→newest, not past today for the current month.
-function monthDays(ym: string): string[] {
+function monthDays(ym: string, tz?: string): string[] {
   const [y, m] = ym.split("-").map(Number);
   const last = new Date(y, m, 0).getDate();
-  const cap = ym === currentYearMonth() ? new Date().getDate() : last;
+  const cap = ym === currentYearMonth(tz) ? currentDayOfMonth(tz) : last;
   return Array.from({ length: cap }, (_, i) => `${ym}-${String(i + 1).padStart(2, "0")}`);
 }
 
@@ -235,29 +243,29 @@ function MySpend({ id, months, currency }: { id: string; months: string[]; curre
 }
 
 function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: string }) {
-  const expenses = useExpenses({ year_month: ym });
+  const me = useMe();
+  const tz = me.data?.timezone;
+  const summary = useAnalytics({ year_month: ym, months: 1 });
   const categories = useCategories();
   const catFor = (categoryId: string) => categories.data?.find((c) => c.id === categoryId) ?? null;
   const [catFilter, setCatFilter] = useState<string | null>(null);
-  const byDay = useMemo(() => {
-    const m = new Map<string, Expense[]>();
-    for (const e of expenses.data ?? []) {
-      if (catFilter && e.category_id !== catFilter) continue;
-      const k = dayKey(e.spent_at);
-      const arr = m.get(k);
-      if (arr) arr.push(e);
-      else m.set(k, [e]);
-    }
-    return m;
-  }, [expenses.data, catFilter]);
 
-  const days = useMemo(() => monthDays(ym), [ym]);
-  const todayKey = dayKey(new Date().toISOString());
+  const days = useMemo(() => monthDays(ym, tz), [ym, tz]);
+  const daysWithSpend = useMemo(() => new Set(summary.data?.daily.map((d) => d.date) ?? []), [summary.data]);
+
+  const todayKey = `${currentYearMonth(tz)}-${pad2(currentDayOfMonth(tz))}`;
   const [selected, setSelected] = useState(days.includes(todayKey) ? todayKey : days[days.length - 1]);
-  const monthTotal = useMemo(
-    () => [...byDay.values()].flat().reduce((s, e) => s + e.amount_cents, 0),
-    [byDay],
-  );
+
+  // Only the selected day's rows are fetched (server resolves the day in the user's tz).
+  const dayExpenses = useDayExpenses(selected, catFilter ?? undefined);
+  // oxlint-disable-next-line no-array-sort -- .slice() already copies before sorting
+  const dayItems = (dayExpenses.data ?? []).slice().sort((a, b) => b.spent_at.localeCompare(a.spent_at));
+  const dayTotal = dayItems.reduce((s, e) => s + e.amount_cents, 0);
+
+  // Month/category totals come from the cheap aggregate, not a full-month row download.
+  const monthTotal = catFilter
+    ? (summary.data?.by_category.find((c) => c.category_id === catFilter)?.total_cents ?? 0)
+    : (summary.data?.month_total_cents ?? 0);
 
   const stripRef = useRef<HTMLDivElement | null>(null);
   const selRef = useRef<HTMLButtonElement | null>(null);
@@ -265,13 +273,9 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
     const c = stripRef.current;
     const el = selRef.current;
     if (c && el) c.scrollLeft = el.offsetLeft - c.clientWidth / 2 + el.clientWidth / 2;
-  }, [expenses.isLoading]);
+  }, [summary.isLoading]);
 
-  // oxlint-disable-next-line no-array-sort -- .slice() already copies before sorting
-  const dayItems = (byDay.get(selected) ?? []).slice().sort((a, b) => b.spent_at.localeCompare(a.spent_at));
-  const dayTotal = dayItems.reduce((s, e) => s + e.amount_cents, 0);
-
-  if (expenses.isLoading) return <div className="h-28 animate-pulse rounded-xl bg-surface" />;
+  if (summary.isLoading) return <div className="h-28 animate-pulse rounded-xl bg-surface" />;
 
   return (
     <div className="space-y-3">
@@ -315,7 +319,7 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
           >
             {days.map((k) => {
               const isSel = k === selected;
-              const has = byDay.has(k);
+              const has = daysWithSpend.has(k);
               const { weekday, day } = chipParts(k);
               return (
                 <button
@@ -347,7 +351,9 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
           </div>
 
           {/* Selected day entries */}
-          {dayItems.length === 0 ? (
+          {dayExpenses.isLoading ? (
+            <div className="h-16 animate-pulse rounded-xl bg-surface" />
+          ) : dayItems.length === 0 ? (
             <p className="card px-4 py-3 text-sm text-muted">
               {catFilter ? `No ${catFor(catFilter)?.label} logged this day` : "No spend logged this day 👻"}
             </p>
@@ -389,6 +395,7 @@ function ExpenseRow({
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ["expenses"] });
+    qc.invalidateQueries({ queryKey: ["analytics"] });
     qc.invalidateQueries({ queryKey: ["standings", battleId] });
     qc.invalidateQueries({ queryKey: ["battle", battleId] });
     qc.invalidateQueries({ queryKey: ["battles"] });

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
 import type { Expense } from "./types";
 
@@ -80,16 +80,19 @@ export function useRecurring() {
   });
 }
 
-// Fetches every page for the month so the day view can group/switch client-side.
-export function useExpenses(params?: { year_month?: string }) {
+// Fetches just one calendar day's rows (server resolves the day in the user's tz).
+// Keyed under ["expenses", …] so expense mutations invalidate it via the ["expenses"] prefix.
+export function useDayExpenses(day: string | null, categoryId?: string) {
   return useQuery({
-    queryKey: ["expenses", params?.year_month ?? "all"],
+    queryKey: ["expenses", "day", day ?? "none", categoryId ?? "all"],
+    enabled: !!day,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const all: Expense[] = [];
       let cursor: string | undefined;
       do {
         // oxlint-disable-next-line no-await-in-loop -- cursor pagination is inherently sequential
-        const page = await api.listExpenses({ ...params, cursor, limit: 100 });
+        const page = await api.listExpenses({ day: day!, category_id: categoryId, cursor, limit: 100 });
         all.push(...page.expenses);
         cursor = page.next_cursor ?? undefined;
       } while (cursor);

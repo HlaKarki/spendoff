@@ -111,9 +111,16 @@ export const api = {
       spent_at?: string;
     }>,
   ) => apiFetch<{ synced: number; expenses: Expense[] }>("/expenses/sync", { method: "POST", json: { items } }),
-  listExpenses: (params?: { year_month?: string; category_id?: string; limit?: number; cursor?: string }) => {
+  listExpenses: (params?: {
+    year_month?: string;
+    day?: string;
+    category_id?: string;
+    limit?: number;
+    cursor?: string;
+  }) => {
     const q = new URLSearchParams();
     if (params?.year_month) q.set("year_month", params.year_month);
+    if (params?.day) q.set("day", params.day);
     if (params?.category_id) q.set("category_id", params.category_id);
     if (params?.limit) q.set("limit", String(params.limit));
     if (params?.cursor) q.set("cursor", params.cursor);

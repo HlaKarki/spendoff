@@ -82,10 +82,16 @@ export interface AnalyticsMonthTotal {
   total_cents: number;
 }
 
+export interface AnalyticsDayTotal {
+  date: string;
+  total_cents: number;
+}
+
 export interface Analytics {
   year_month: string;
   month_total_cents: number;
   by_category: AnalyticsCategoryTotal[];
+  daily: AnalyticsDayTotal[];
   monthly: AnalyticsMonthTotal[];
 }
 

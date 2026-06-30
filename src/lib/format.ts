@@ -55,6 +55,12 @@ export function browserTimezone(): string {
   }
 }
 
+/** Today's day-of-month (1-31) in the given timezone — matches how the backend materializes recurring rules. */
+export function currentDayOfMonth(timezone?: string): number {
+  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return Number(new Intl.DateTimeFormat("en-CA", { timeZone: tz, day: "2-digit" }).format(new Date()));
+}
+
 /** Local calendar day for an ISO timestamp, as "YYYY-MM-DD". */
 export function dayKey(iso: string): string {
   const d = new Date(iso);

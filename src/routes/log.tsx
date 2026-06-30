@@ -7,9 +7,9 @@ import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { api } from "../lib/api";
-import { money } from "../lib/format";
+import { currentDayOfMonth, money } from "../lib/format";
 import { logExpense } from "../lib/outbox";
-import { useCategories } from "../lib/queries";
+import { useCategories, useMe } from "../lib/queries";
 import { cn } from "../lib/utils";
 
 function ordinal(n: number): string {
@@ -32,6 +32,7 @@ const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "del"] as 
 
 function LogScreen() {
   const categories = useCategories();
+  const me = useMe();
   const qc = useQueryClient();
   const [cents, setCents] = useState(0);
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -40,7 +41,7 @@ function LogScreen() {
   const [repeat, setRepeat] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; offline: boolean } | null>(null);
-  const today = new Date().getDate();
+  const today = currentDayOfMonth(me.data?.timezone);
 
   function press(k: (typeof KEYS)[number]) {
     if (k === "del") return setCents((c) => Math.floor(c / 10));

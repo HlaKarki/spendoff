@@ -198,20 +198,26 @@ function MySpend({ id, ym, currency }: { id: string; ym: string; currency: strin
   const expenses = useExpenses({ year_month: ym });
   const categories = useCategories();
   const catFor = (categoryId: string) => categories.data?.find((c) => c.id === categoryId) ?? null;
+  const [catFilter, setCatFilter] = useState<string | null>(null);
   const byDay = useMemo(() => {
     const m = new Map<string, Expense[]>();
     for (const e of expenses.data ?? []) {
+      if (catFilter && e.category_id !== catFilter) continue;
       const k = dayKey(e.spent_at);
       const arr = m.get(k);
       if (arr) arr.push(e);
       else m.set(k, [e]);
     }
     return m;
-  }, [expenses.data]);
+  }, [expenses.data, catFilter]);
 
   const days = useMemo(() => monthDays(ym), [ym]);
   const todayKey = dayKey(new Date().toISOString());
   const [selected, setSelected] = useState(days.includes(todayKey) ? todayKey : days[days.length - 1]);
+  const monthTotal = useMemo(
+    () => [...byDay.values()].flat().reduce((s, e) => s + e.amount_cents, 0),
+    [byDay],
+  );
 
   const stripRef = useRef<HTMLDivElement | null>(null);
   const selRef = useRef<HTMLButtonElement | null>(null);
@@ -233,6 +239,39 @@ function MySpend({ id, ym, currency }: { id: string; ym: string; currency: strin
         <div className="h-28 animate-pulse rounded-xl bg-surface" />
       ) : (
         <>
+          {/* Category filter */}
+          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              onClick={() => setCatFilter(null)}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                catFilter === null ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+              )}
+            >
+              All
+            </button>
+            {categories.data?.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setCatFilter(c.id)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                  catFilter === c.id ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+                )}
+              >
+                <CategoryIcon name={c.icon} className="size-3.5" />
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {catFilter && (
+            <p className="px-1 text-xs text-faint">
+              {catFor(catFilter)?.label} this month:{" "}
+              <span className="font-semibold text-muted">{money(monthTotal, currency)}</span>
+            </p>
+          )}
+
           {/* Day switcher */}
           <div
             ref={stripRef}
@@ -273,7 +312,9 @@ function MySpend({ id, ym, currency }: { id: string; ym: string; currency: strin
 
           {/* Selected day entries */}
           {dayItems.length === 0 ? (
-            <p className="card px-4 py-3 text-sm text-muted">No spend logged this day 👻</p>
+            <p className="card px-4 py-3 text-sm text-muted">
+              {catFilter ? `No ${catFor(catFilter)?.label} logged this day` : "No spend logged this day 👻"}
+            </p>
           ) : (
             <div className="card divide-y divide-line">
               {dayItems.map((e) => (

@@ -1,4 +1,14 @@
-import type { Battle, BattleDetail, Category, Expense, MonthlyResult, StandingsResult, User, WinRule } from "./types";
+import type {
+  Battle,
+  BattleDetail,
+  Category,
+  Expense,
+  MonthlyResult,
+  RecurringExpense,
+  StandingsResult,
+  User,
+  WinRule,
+} from "./types";
 
 // Same-origin by default (dev: Vite proxy → :8787; prod: same-origin proxy / service binding).
 // Set VITE_API_BASE to the backend origin if you instead call it cross-origin (needs CORS+credentials).
@@ -114,6 +124,16 @@ export const api = {
     json: { amount_cents?: number; category_id?: string; note?: string | null; spent_at?: string },
   ) => apiFetch<{ expense: Expense }>(`/expenses/${id}`, { method: "PATCH", json }),
   deleteExpense: (id: string) => apiFetch<{ ok: boolean }>(`/expenses/${id}`, { method: "DELETE" }),
+
+  // ── Recurring ─────────────────────────────────────────────────────────────
+  listRecurring: () => apiFetch<{ recurring: RecurringExpense[] }>("/recurring"),
+  createRecurring: (json: { amount_cents: number; category_id: string; note?: string | null; day_of_month: number }) =>
+    apiFetch<{ recurring: RecurringExpense }>("/recurring", { method: "POST", json }),
+  updateRecurring: (
+    id: string,
+    json: { amount_cents?: number; category_id?: string; note?: string | null; day_of_month?: number; active?: boolean },
+  ) => apiFetch<{ recurring: RecurringExpense }>(`/recurring/${id}`, { method: "PATCH", json }),
+  deleteRecurring: (id: string) => apiFetch<{ ok: boolean }>(`/recurring/${id}`, { method: "DELETE" }),
 
   // ── Standings & results ───────────────────────────────────────────────────
   standings: (id: string, ym?: string) =>

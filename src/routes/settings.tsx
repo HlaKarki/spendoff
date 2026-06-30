@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Bell, BellOff, LogOut } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Bell, BellOff, ChevronRight, LogOut, Repeat } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
@@ -85,6 +85,17 @@ function Settings() {
         <Row label="Email" value={me.data?.email ?? "—"} />
         <Row label="Timezone" value={me.data?.timezone ?? "—"} />
       </section>
+
+      <Link to="/recurring" className="card flex items-center justify-between px-4 py-4">
+        <div className="flex items-center gap-3">
+          <Repeat className="size-5 text-faint" />
+          <div className="text-left">
+            <div className="font-medium">Recurring expenses</div>
+            <div className="text-xs text-faint">Auto-log fixed monthly costs</div>
+          </div>
+        </div>
+        <ChevronRight className="size-5 text-faint" />
+      </Link>
 
       <section className="space-y-2">
         <h2 className="label">Notifications</h2>

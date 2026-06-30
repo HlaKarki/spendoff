@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RecurringRouteImport } from './routes/recurring'
 import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as IndexRouteImport } from './routes/index'
@@ -22,6 +23,11 @@ import { Route as BattlesIdResultsYmRouteImport } from './routes/battles.$id.res
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecurringRoute = RecurringRouteImport.update({
+  id: '/recurring',
+  path: '/recurring',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardRoute = OnboardRouteImport.update({
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/log': typeof LogRoute
   '/onboard': typeof OnboardRoute
+  '/recurring': typeof RecurringRoute
   '/settings': typeof SettingsRoute
   '/auth/magic': typeof AuthMagicRoute
   '/battles/$id': typeof BattlesIdRouteWithChildren
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/log': typeof LogRoute
   '/onboard': typeof OnboardRoute
+  '/recurring': typeof RecurringRoute
   '/settings': typeof SettingsRoute
   '/auth/magic': typeof AuthMagicRoute
   '/battles': typeof BattlesIndexRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/log': typeof LogRoute
   '/onboard': typeof OnboardRoute
+  '/recurring': typeof RecurringRoute
   '/settings': typeof SettingsRoute
   '/auth/magic': typeof AuthMagicRoute
   '/battles/$id': typeof BattlesIdRouteWithChildren
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/'
     | '/log'
     | '/onboard'
+    | '/recurring'
     | '/settings'
     | '/auth/magic'
     | '/battles/$id'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/'
     | '/log'
     | '/onboard'
+    | '/recurring'
     | '/settings'
     | '/auth/magic'
     | '/battles'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/log'
     | '/onboard'
+    | '/recurring'
     | '/settings'
     | '/auth/magic'
     | '/battles/$id'
@@ -137,6 +149,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LogRoute: typeof LogRoute
   OnboardRoute: typeof OnboardRoute
+  RecurringRoute: typeof RecurringRoute
   SettingsRoute: typeof SettingsRoute
   AuthMagicRoute: typeof AuthMagicRoute
   BattlesIdRoute: typeof BattlesIdRouteWithChildren
@@ -150,6 +163,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recurring': {
+      id: '/recurring'
+      path: '/recurring'
+      fullPath: '/recurring'
+      preLoaderRoute: typeof RecurringRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboard': {
@@ -229,6 +249,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LogRoute: LogRoute,
   OnboardRoute: OnboardRoute,
+  RecurringRoute: RecurringRoute,
   SettingsRoute: SettingsRoute,
   AuthMagicRoute: AuthMagicRoute,
   BattlesIdRoute: BattlesIdRouteWithChildren,

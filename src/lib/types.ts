@@ -56,6 +56,18 @@ export interface Expense {
   updated_at: string | null;
 }
 
+export interface RecurringExpense {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  category_id: string;
+  note: string | null;
+  day_of_month: number;
+  active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 // ── Scoring snapshot (camelCase, self-contained blob) ──────────────────────
 
 export interface Standing {

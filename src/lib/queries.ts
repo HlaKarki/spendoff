@@ -66,6 +66,13 @@ export function useResult(id: string, yearMonth: string) {
   });
 }
 
+export function useRecurring() {
+  return useQuery({
+    queryKey: ["recurring"],
+    queryFn: async () => (await api.listRecurring()).recurring,
+  });
+}
+
 // Fetches every page for the month so the day view can group/switch client-side.
 export function useExpenses(params?: { year_month?: string }) {
   return useQuery({

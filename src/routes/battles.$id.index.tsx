@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, Copy, LogOut, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Copy, LogOut, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
@@ -104,7 +104,12 @@ function BattleDetail() {
       </section>
 
       {/* Your spend */}
-      <MySpend id={id} ym={ym} currency={b.currency} />
+      <MySpend
+        id={id}
+        // oxlint-disable-next-line no-array-sort -- Array.from creates a fresh array, safe to sort in place
+        months={Array.from(new Set([ym, ...(results.data?.map((r) => r.year_month) ?? [])])).sort()}
+        currency={b.currency}
+      />
 
       {/* Win rule */}
       <section className="space-y-2">
@@ -194,7 +199,42 @@ function toDatetimeLocal(iso: string): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
-function MySpend({ id, ym, currency }: { id: string; ym: string; currency: string }) {
+function MySpend({ id, months, currency }: { id: string; months: string[]; currency: string }) {
+  const [sel, setSel] = useState(months[months.length - 1]);
+  const idx = Math.max(0, months.indexOf(sel));
+  const ym = months[idx];
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="label">Your spend</h2>
+        {months.length > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSel(months[idx - 1])}
+              disabled={idx === 0}
+              className="text-faint disabled:opacity-30"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="size-5" />
+            </button>
+            <span className="min-w-[5.5rem] text-center text-sm font-semibold">{formatMonthShort(ym)}</span>
+            <button
+              onClick={() => setSel(months[idx + 1])}
+              disabled={idx === months.length - 1}
+              className="text-faint disabled:opacity-30"
+              aria-label="Next month"
+            >
+              <ChevronRight className="size-5" />
+            </button>
+          </div>
+        )}
+      </div>
+      <MonthSpend key={ym} id={id} ym={ym} currency={currency} />
+    </section>
+  );
+}
+
+function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: string }) {
   const expenses = useExpenses({ year_month: ym });
   const categories = useCategories();
   const catFor = (categoryId: string) => categories.data?.find((c) => c.id === categoryId) ?? null;
@@ -231,15 +271,11 @@ function MySpend({ id, ym, currency }: { id: string; ym: string; currency: strin
   const dayItems = (byDay.get(selected) ?? []).slice().sort((a, b) => b.spent_at.localeCompare(a.spent_at));
   const dayTotal = dayItems.reduce((s, e) => s + e.amount_cents, 0);
 
-  return (
-    <section className="space-y-3">
-      <h2 className="label">Your spend</h2>
+  if (expenses.isLoading) return <div className="h-28 animate-pulse rounded-xl bg-surface" />;
 
-      {expenses.isLoading ? (
-        <div className="h-28 animate-pulse rounded-xl bg-surface" />
-      ) : (
-        <>
-          {/* Category filter */}
+  return (
+    <div className="space-y-3">
+      {/* Category filter */}
           <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               onClick={() => setCatFilter(null)}
@@ -267,7 +303,7 @@ function MySpend({ id, ym, currency }: { id: string; ym: string; currency: strin
 
           {catFilter && (
             <p className="px-1 text-xs text-faint">
-              {catFor(catFilter)?.label} this month:{" "}
+              {catFor(catFilter)?.label} in {formatMonthShort(ym)}:{" "}
               <span className="font-semibold text-muted">{money(monthTotal, currency)}</span>
             </p>
           )}
@@ -328,9 +364,7 @@ function MySpend({ id, ym, currency }: { id: string; ym: string; currency: strin
               ))}
             </div>
           )}
-        </>
-      )}
-    </section>
+    </div>
   );
 }
 

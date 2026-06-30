@@ -186,6 +186,14 @@ function chipParts(key: string) {
   return { weekday: date.toLocaleDateString("en-US", { weekday: "short" }), day: d };
 }
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+// ISO timestamp -> value for <input type="datetime-local"> (local time, no tz).
+function toDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
 function MySpend({ id, ym, currency }: { id: string; ym: string; currency: string }) {
   const expenses = useExpenses({ year_month: ym });
   const categories = useCategories();
@@ -302,6 +310,7 @@ function ExpenseRow({
   const [amount, setAmount] = useState(String(expense.amount_cents / 100));
   const [categoryId, setCategoryId] = useState(expense.category_id);
   const [note, setNote] = useState(expense.note ?? "");
+  const [spentAt, setSpentAt] = useState(toDatetimeLocal(expense.spent_at));
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ["expenses"] });
@@ -316,6 +325,7 @@ function ExpenseRow({
         amount_cents: Math.round(Number(amount || 0) * 100),
         category_id: categoryId,
         note: note.trim() || null,
+        spent_at: spentAt ? new Date(spentAt).toISOString() : undefined,
       }),
     onSuccess: () => {
       invalidate();
@@ -385,6 +395,15 @@ function ExpenseRow({
         onChange={(e) => setNote(e.target.value)}
         placeholder="Note (optional)"
       />
+      <label className="flex items-center justify-between gap-2 text-sm text-faint">
+        When
+        <input
+          type="datetime-local"
+          className="input w-auto flex-1 py-2 [color-scheme:dark]"
+          value={spentAt}
+          onChange={(e) => setSpentAt(e.target.value)}
+        />
+      </label>
       <div className="flex items-center gap-2">
         <button
           onClick={() => del.mutate()}

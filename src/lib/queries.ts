@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
 
 export function useMe() {
@@ -66,8 +66,10 @@ export function useResult(id: string, yearMonth: string) {
 }
 
 export function useExpenses(params?: { year_month?: string }) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["expenses", params?.year_month ?? "all"],
-    queryFn: async () => (await api.listExpenses(params)).expenses,
+    queryFn: ({ pageParam }) => api.listExpenses({ ...params, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
   });
 }

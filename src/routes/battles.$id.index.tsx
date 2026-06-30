@@ -176,20 +176,32 @@ function MySpend({ id, ym, currency }: { id: string; ym: string; currency: strin
   const expenses = useExpenses({ year_month: ym });
   const categories = useCategories();
   const catFor = (categoryId: string) => categories.data?.find((c) => c.id === categoryId) ?? null;
+  const items = expenses.data?.pages.flatMap((p) => p.expenses) ?? [];
 
   return (
     <section className="space-y-2">
       <h2 className="label">Your spend</h2>
       {expenses.isLoading ? (
         <div className="h-20 animate-pulse rounded-xl bg-surface" />
-      ) : !expenses.data || expenses.data.length === 0 ? (
+      ) : items.length === 0 ? (
         <p className="card px-4 py-3 text-sm text-muted">Nothing logged yet this month.</p>
       ) : (
-        <div className="card divide-y divide-line">
-          {expenses.data.map((e) => (
-            <ExpenseRow key={e.id} battleId={id} expense={e} category={catFor(e.category_id)} currency={currency} />
-          ))}
-        </div>
+        <>
+          <div className="card divide-y divide-line">
+            {items.map((e) => (
+              <ExpenseRow key={e.id} battleId={id} expense={e} category={catFor(e.category_id)} currency={currency} />
+            ))}
+          </div>
+          {expenses.hasNextPage && (
+            <button
+              onClick={() => expenses.fetchNextPage()}
+              disabled={expenses.isFetchingNextPage}
+              className="btn-ghost w-full py-2.5 text-sm"
+            >
+              {expenses.isFetchingNextPage ? "Loading…" : "Load more"}
+            </button>
+          )}
+        </>
       )}
     </section>
   );

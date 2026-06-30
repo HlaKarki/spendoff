@@ -93,9 +93,74 @@ function Showdown() {
         </section>
       )}
 
+      {/* Daily race */}
+      <DailyRace snap={snap} nameOf={nameOf} />
+
       {/* Trends */}
       <Trends snap={snap} nameOf={nameOf} />
     </div>
+  );
+}
+
+function DailyRace({ snap, nameOf }: { snap: MonthlyResultSnapshot; nameOf: (uid: string | null) => string }) {
+  const days = snap.trends.dailyTotals;
+  if (days.length < 2) return null;
+
+  const series = snap.standings.map((s, idx) => {
+    let cum = 0;
+    const points = days.map((d) => {
+      cum += d.perUser.find((p) => p.userId === s.userId)?.totalCents ?? 0;
+      return cum;
+    });
+    const isWinner = s.userId === snap.winnerUserId;
+    return {
+      userId: s.userId,
+      points,
+      final: cum,
+      color: isWinner ? "var(--color-accent)" : "var(--color-muted)",
+      opacity: isWinner ? 1 : Math.max(0.4, 1 - idx * 0.25),
+    };
+  });
+
+  const max = Math.max(1, ...series.map((s) => s.final));
+  const W = 320;
+  const H = 140;
+  const padX = 6;
+  const padY = 10;
+  const x = (i: number) => padX + (i / (days.length - 1)) * (W - padX * 2);
+  const y = (v: number) => H - padY - (v / max) * (H - padY * 2);
+
+  return (
+    <section className="space-y-2">
+      <h2 className="label">Daily race</h2>
+      <div className="card px-4 py-4">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+          {series.map((s) => (
+            <g key={s.userId} style={{ opacity: s.opacity }}>
+              <polyline
+                points={s.points.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              <circle cx={x(days.length - 1)} cy={y(s.final)} r={3.5} fill={s.color} />
+            </g>
+          ))}
+        </svg>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+          {series.map((s) => (
+            <div key={s.userId} className="flex items-center gap-1.5 text-xs">
+              <span className="size-2.5 rounded-full" style={{ backgroundColor: s.color, opacity: s.opacity }} />
+              <span className="font-medium text-muted">{nameOf(s.userId)}</span>
+              <span className="tabular-nums text-faint">{money(s.final, snap.currency)}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-faint">Cumulative spend · lower line is winning</p>
+      </div>
+    </section>
   );
 }
 

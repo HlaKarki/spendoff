@@ -68,6 +68,27 @@ export interface RecurringExpense {
   updated_at: string | null;
 }
 
+// ── Personal analytics ─────────────────────────────────────────────────────
+
+export interface AnalyticsCategoryTotal {
+  category_id: string;
+  label: string;
+  icon: string;
+  total_cents: number;
+}
+
+export interface AnalyticsMonthTotal {
+  year_month: string;
+  total_cents: number;
+}
+
+export interface Analytics {
+  year_month: string;
+  month_total_cents: number;
+  by_category: AnalyticsCategoryTotal[];
+  monthly: AnalyticsMonthTotal[];
+}
+
 // ── Scoring snapshot (camelCase, self-contained blob) ──────────────────────
 
 export interface Standing {

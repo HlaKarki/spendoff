@@ -1,4 +1,5 @@
 import type {
+  Analytics,
   Battle,
   BattleDetail,
   Category,
@@ -134,6 +135,15 @@ export const api = {
     json: { amount_cents?: number; category_id?: string; note?: string | null; day_of_month?: number; active?: boolean },
   ) => apiFetch<{ recurring: RecurringExpense }>(`/recurring/${id}`, { method: "PATCH", json }),
   deleteRecurring: (id: string) => apiFetch<{ ok: boolean }>(`/recurring/${id}`, { method: "DELETE" }),
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  analytics: (params?: { year_month?: string; months?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.year_month) q.set("year_month", params.year_month);
+    if (params?.months) q.set("months", String(params.months));
+    const qs = q.toString();
+    return apiFetch<Analytics>(`/analytics${qs ? `?${qs}` : ""}`);
+  },
 
   // ── Standings & results ───────────────────────────────────────────────────
   standings: (id: string, ym?: string) =>

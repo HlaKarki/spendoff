@@ -2,12 +2,13 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { useMe } from "../lib/queries";
 import { cn } from "../lib/utils";
-import { Home, Plus, Settings, Swords } from "./icons";
+import { BarChart3, Home, Plus, Settings, Swords } from "./icons";
 
 const TABS = [
   { to: "/", label: "Home", icon: Home, exact: true, accent: false },
   { to: "/battles", label: "Battles", icon: Swords, exact: false, accent: false },
   { to: "/log", label: "Log", icon: Plus, exact: false, accent: true },
+  { to: "/analytics", label: "Stats", icon: BarChart3, exact: false, accent: false },
   { to: "/settings", label: "Settings", icon: Settings, exact: false, accent: false },
 ] as const;
 

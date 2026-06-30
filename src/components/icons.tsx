@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Car,
   Clapperboard,
   CircleDollarSign,
@@ -33,4 +34,4 @@ export function CategoryIcon({ name, className }: { name: string; className?: st
   return <Icon className={className} />;
 }
 
-export { Home, Plus, Settings, Swords, CircleDollarSign };
+export { Home, Plus, Settings, Swords, CircleDollarSign, BarChart3 };

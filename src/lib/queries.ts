@@ -66,6 +66,13 @@ export function useResult(id: string, yearMonth: string) {
   });
 }
 
+export function useAnalytics(params?: { year_month?: string; months?: number }) {
+  return useQuery({
+    queryKey: ["analytics", params?.year_month ?? "current", params?.months ?? 6],
+    queryFn: () => api.analytics(params),
+  });
+}
+
 export function useRecurring() {
   return useQuery({
     queryKey: ["recurring"],

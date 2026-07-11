@@ -1,10 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell, BellOff, ChevronRight, LogOut, Repeat } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
+import { browserTimezone } from "../lib/format";
 import { useMe } from "../lib/queries";
 import { currentPushSubscription, disablePush, enablePush, isPushSupported } from "../lib/push";
 
@@ -83,8 +84,9 @@ function Settings() {
       <section className="card divide-y divide-line">
         <Row label="Name" value={me.data?.display_name ?? "—"} />
         <Row label="Email" value={me.data?.email ?? "—"} />
-        <Row label="Timezone" value={me.data?.timezone ?? "—"} />
       </section>
+
+      <TimezoneSection />
 
       <Link to="/recurring" className="card flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
@@ -138,5 +140,107 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-sm text-faint">{label}</span>
       <span className="font-medium">{value}</span>
     </div>
+  );
+}
+
+/** IANA zone ids, newest ICU list. Callers must union in the account/device zones — see below. */
+function supportedZones(): string[] {
+  try {
+    const list = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone");
+    return list?.length ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function TimezoneSection() {
+  const me = useMe();
+  const qc = useQueryClient();
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const device = browserTimezone();
+  const current = me.data?.timezone;
+
+  // Union in the account's and the device's own zones: the ICU list is build-dependent and can omit
+  // ids real browsers report (some builds list Asia/Calcutta but not Asia/Kolkata). Without this the
+  // select could fail to show the zone you're actually on.
+  const zones = useMemo(() => {
+    const set = new Set(supportedZones());
+    if (device) set.add(device);
+    if (current) set.add(current);
+    return [...set].sort();
+  }, [device, current]);
+
+  const groups = useMemo(() => {
+    const byArea = new Map<string, string[]>();
+    for (const z of zones) {
+      const area = z.includes("/") ? z.slice(0, z.indexOf("/")) : "Other";
+      const list = byArea.get(area) ?? [];
+      list.push(z);
+      byArea.set(area, list);
+    }
+    return [...byArea.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [zones]);
+
+  const save = useMutation({
+    mutationFn: (timezone: string) => api.updateMe({ timezone }),
+    onSuccess: async (res) => {
+      const n = res.rebucketed_expenses;
+      setMsg(n > 0 ? `Saved. ${n} expense${n === 1 ? "" : "s"} moved to a different month.` : "Saved.");
+      // Month totals, day grouping and the daily dots are all computed server-side from this zone,
+      // so everything cached is now stale — not just ["me"].
+      await qc.invalidateQueries();
+    },
+    onError: (e) => setMsg(e instanceof ApiError ? e.message : "Couldn't save that right now."),
+  });
+
+  const mismatched = !!current && !!device && current !== device;
+
+  return (
+    <section className="space-y-2">
+      <h2 className="label">Timezone</h2>
+      <div className="card space-y-3 px-4 py-4">
+        <select
+          value={current ?? ""}
+          disabled={!current || save.isPending}
+          onChange={(e) => {
+            setMsg(null);
+            save.mutate(e.target.value);
+          }}
+          className="w-full rounded-lg bg-surface-2 px-3 py-2.5 font-medium disabled:opacity-60"
+        >
+          {!current && <option value="">Loading…</option>}
+          {groups.map(([area, list]) => (
+            <optgroup key={area} label={area}>
+              {list.map((z) => (
+                <option key={z} value={z}>
+                  {z.replace(/_/g, " ")}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+
+        {mismatched && (
+          <button
+            onClick={() => {
+              setMsg(null);
+              save.mutate(device);
+            }}
+            disabled={save.isPending}
+            className="btn-outline w-full py-2.5 text-sm"
+          >
+            Use this device's timezone ({device.replace(/_/g, " ")})
+          </button>
+        )}
+
+        <p className="text-xs text-faint">
+          Sets when your day starts and ends. Changing it re-files past expenses into the months they fall in here.
+          Settled battle results don't change.
+        </p>
+        {save.isPending && <p className="text-sm text-muted">Saving…</p>}
+        {msg && !save.isPending && <p className="text-sm text-muted">{msg}</p>}
+      </div>
+    </section>
   );
 }

@@ -19,6 +19,14 @@ export function useMe() {
   });
 }
 
+/**
+ * The account's timezone, or undefined while `useMe` is still in flight. Pass straight to the
+ * date helpers in `format.ts` — they fall back to the device zone until this resolves.
+ */
+export function useTimezone(): string | undefined {
+  return useMe().data?.timezone;
+}
+
 export function useCategories() {
   return useQuery({
     queryKey: ["categories"],

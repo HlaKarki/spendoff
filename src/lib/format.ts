@@ -37,16 +37,6 @@ export function formatMonthShort(yearMonth: string): string {
   return `${MONTHS[m - 1].slice(0, 3)} ${y}`;
 }
 
-export function currentYearMonth(timezone?: string): string {
-  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit" }).formatToParts(
-    new Date(),
-  );
-  const y = parts.find((p) => p.type === "year")!.value;
-  const m = parts.find((p) => p.type === "month")!.value;
-  return `${y}-${m}`;
-}
-
 export function browserTimezone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -55,26 +45,116 @@ export function browserTimezone(): string {
   }
 }
 
+/**
+ * The zone to render dates in. The account's zone is the truth, but it arrives with `useMe`, so
+ * until that resolves the device's zone is the best guess available. Every date helper funnels
+ * through here so that fallback is one deliberate decision rather than repeated by accident.
+ * Prefer `useTimezone()` in components — it feeds this from the account.
+ */
+export function resolveTimezone(timezone?: string): string {
+  return timezone || browserTimezone();
+}
+
+export function currentYearMonth(timezone?: string): string {
+  const tz = resolveTimezone(timezone);
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit" }).formatToParts(
+    new Date(),
+  );
+  const y = parts.find((p) => p.type === "year")!.value;
+  const m = parts.find((p) => p.type === "month")!.value;
+  return `${y}-${m}`;
+}
+
 /** Today's day-of-month (1-31) in the given timezone — matches how the backend materializes recurring rules. */
 export function currentDayOfMonth(timezone?: string): number {
-  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const tz = resolveTimezone(timezone);
   return Number(new Intl.DateTimeFormat("en-CA", { timeZone: tz, day: "2-digit" }).format(new Date()));
 }
 
-/** Local calendar day for an ISO timestamp, as "YYYY-MM-DD". */
-export function dayKey(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** Calendar day ("YYYY-MM-DD") that an instant falls on in `timezone`. Mirrors the backend's dayInTz. */
+export function dayInTz(iso: string, timezone?: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: resolveTimezone(timezone),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
 }
 
-export function relativeDay(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diff = Math.round((today.getTime() - day.getTime()) / 86400000);
+/** Clock time for an instant, in the account's zone rather than the device's. */
+export function formatTime(iso: string, timezone?: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    timeZone: resolveTimezone(timezone),
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * "Today" / "Yesterday" / weekday for a plain calendar day ("YYYY-MM-DD"), relative to today in
+ * `timezone`. Takes a day rather than an instant because that's what the day-switcher deals in —
+ * turning it back into an instant first is what forced the old `${day}T12:00:00` noon hack.
+ */
+export function relativeDayKey(day: string, timezone?: string): string {
+  const today = dayInTz(new Date().toISOString(), timezone);
+  // Both are plain dates: parse as UTC so the difference is a whole number of days no matter what
+  // DST did in between.
+  const diff = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86400000);
   if (diff === 0) return "Today";
   if (diff === 1) return "Yesterday";
-  if (diff < 7) return d.toLocaleDateString("en-US", { weekday: "long" });
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  const d = new Date(`${day}T00:00:00Z`);
+  if (diff > 0 && diff < 7) return d.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long" });
+  return d.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
+}
+
+export function relativeDay(iso: string, timezone?: string): string {
+  return relativeDayKey(dayInTz(iso, timezone), timezone);
+}
+
+/** Milliseconds `timeZone` is ahead of UTC at `date`. Mirrors the backend's tzOffsetMs. */
+function tzOffsetMs(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
+  return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")) - date.getTime();
+}
+
+/** An instant -> the "YYYY-MM-DDTHH:mm" an <input type="datetime-local"> wants, read in `timezone`. */
+export function datetimeLocalInTz(iso: string, timezone?: string): string {
+  const tz = resolveTimezone(timezone);
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(new Date(iso));
+  const get = (t: string) => p.find((x) => x.type === t)!.value;
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+/**
+ * The inverse: a wall-clock "YYYY-MM-DDTHH:mm" typed in `timezone` -> the UTC instant it names.
+ * Resolved in two passes, since the offset at the naive instant isn't necessarily the offset at the
+ * real one — they differ across a DST transition.
+ */
+export function datetimeLocalToUtc(local: string, timezone?: string): string {
+  const tz = resolveTimezone(timezone);
+  const [date, time] = local.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  const naive = Date.UTC(y, m - 1, d, hh, mm);
+  const guess = naive - tzOffsetMs(new Date(naive), tz);
+  return new Date(naive - tzOffsetMs(new Date(guess), tz)).toISOString();
 }

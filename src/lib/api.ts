@@ -143,7 +143,13 @@ export const api = {
     apiFetch<{ recurring: RecurringExpense }>("/recurring", { method: "POST", json }),
   updateRecurring: (
     id: string,
-    json: { amount_cents?: number; category_id?: string; note?: string | null; day_of_month?: number; active?: boolean },
+    json: {
+      amount_cents?: number;
+      category_id?: string;
+      note?: string | null;
+      day_of_month?: number;
+      active?: boolean;
+    },
   ) => apiFetch<{ recurring: RecurringExpense }>(`/recurring/${id}`, { method: "PATCH", json }),
   deleteRecurring: (id: string) => apiFetch<{ ok: boolean }>(`/recurring/${id}`, { method: "DELETE" }),
 

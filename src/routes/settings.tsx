@@ -168,6 +168,7 @@ function TimezoneSection() {
     const set = new Set(supportedZones());
     if (device) set.add(device);
     if (current) set.add(current);
+    // oxlint-disable-next-line no-array-sort -- spread creates a fresh array, safe to sort in place
     return [...set].sort();
   }, [device, current]);
 
@@ -179,6 +180,7 @@ function TimezoneSection() {
       list.push(z);
       byArea.set(area, list);
     }
+    // oxlint-disable-next-line no-array-sort -- spread creates a fresh array, safe to sort in place
     return [...byArea.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [zones]);
 

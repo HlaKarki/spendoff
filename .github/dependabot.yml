@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Must be `bun`, not `npm`: CI installs with --frozen-lockfile, so an update that bumped
+  # package.json without also updating bun.lock would fail CI on its own PR.
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per week for the routine stuff, rather than a dozen. Majors stay separate so a
+      # breaking change is never buried in a batch.
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

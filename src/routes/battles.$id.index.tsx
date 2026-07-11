@@ -178,7 +178,12 @@ function BattleDetail() {
           <h2 className="label">Past months</h2>
           <div className="space-y-2">
             {results.data.map((r) => (
-              <Link key={r.year_month} to="/battles/$id/results/$ym" params={{ id, ym: r.year_month }} className="block">
+              <Link
+                key={r.year_month}
+                to="/battles/$id/results/$ym"
+                params={{ id, ym: r.year_month }}
+                className="block"
+              >
                 <div className="card flex items-center justify-between px-4 py-3 transition active:scale-[0.99]">
                   <span className="font-semibold">{formatMonthShort(r.year_month)}</span>
                   <WinnerChip result={r} />
@@ -287,96 +292,90 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
   return (
     <div className="space-y-3">
       {/* Category filter */}
-          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <button
+          onClick={() => setCatFilter(null)}
+          className={cn(
+            "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+            catFilter === null ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+          )}
+        >
+          All
+        </button>
+        {categories.data?.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setCatFilter(c.id)}
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+              catFilter === c.id ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+            )}
+          >
+            <CategoryIcon name={c.icon} className="size-3.5" />
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {catFilter && (
+        <p className="px-1 text-xs text-faint">
+          {catFor(catFilter)?.label} in {formatMonthShort(ym)}:{" "}
+          <span className="font-semibold text-muted">{money(monthTotal, currency)}</span>
+        </p>
+      )}
+
+      {/* Day switcher */}
+      <div
+        ref={stripRef}
+        className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {days.map((k) => {
+          const isSel = k === selected;
+          const has = daysWithSpend.has(k);
+          const { weekday, day } = chipParts(k);
+          return (
             <button
-              onClick={() => setCatFilter(null)}
+              key={k}
+              ref={isSel ? selRef : undefined}
+              onClick={() => setSelected(k)}
               className={cn(
-                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                catFilter === null ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+                "flex min-w-[3rem] shrink-0 flex-col items-center gap-0.5 rounded-xl border px-2 py-2 transition",
+                isSel ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
               )}
             >
-              All
-            </button>
-            {categories.data?.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setCatFilter(c.id)}
+              <span className="text-[10px] font-semibold uppercase">{weekday}</span>
+              <span className="text-base font-bold leading-none tabular-nums">{day}</span>
+              <span
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                  catFilter === c.id ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+                  "mt-0.5 size-1.5 rounded-full",
+                  has ? (isSel ? "bg-accent" : "bg-faint") : "bg-transparent",
                 )}
-              >
-                <CategoryIcon name={c.icon} className="size-3.5" />
-                {c.label}
-              </button>
-            ))}
-          </div>
+              />
+            </button>
+          );
+        })}
+      </div>
 
-          {catFilter && (
-            <p className="px-1 text-xs text-faint">
-              {catFor(catFilter)?.label} in {formatMonthShort(ym)}:{" "}
-              <span className="font-semibold text-muted">{money(monthTotal, currency)}</span>
-            </p>
-          )}
+      {/* Selected day summary */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-sm font-semibold">{relativeDayKey(selected, tz)}</span>
+        <span className="text-sm font-bold tabular-nums">{money(dayTotal, currency)}</span>
+      </div>
 
-          {/* Day switcher */}
-          <div
-            ref={stripRef}
-            className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {days.map((k) => {
-              const isSel = k === selected;
-              const has = daysWithSpend.has(k);
-              const { weekday, day } = chipParts(k);
-              return (
-                <button
-                  key={k}
-                  ref={isSel ? selRef : undefined}
-                  onClick={() => setSelected(k)}
-                  className={cn(
-                    "flex min-w-[3rem] shrink-0 flex-col items-center gap-0.5 rounded-xl border px-2 py-2 transition",
-                    isSel ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
-                  )}
-                >
-                  <span className="text-[10px] font-semibold uppercase">{weekday}</span>
-                  <span className="text-base font-bold leading-none tabular-nums">{day}</span>
-                  <span
-                    className={cn(
-                      "mt-0.5 size-1.5 rounded-full",
-                      has ? (isSel ? "bg-accent" : "bg-faint") : "bg-transparent",
-                    )}
-                  />
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Selected day summary */}
-          <div className="flex items-center justify-between px-1">
-            <span className="text-sm font-semibold">{relativeDayKey(selected, tz)}</span>
-            <span className="text-sm font-bold tabular-nums">{money(dayTotal, currency)}</span>
-          </div>
-
-          {/* Selected day entries */}
-          {dayExpenses.isLoading ? (
-            <div className="h-16 animate-pulse rounded-xl bg-surface" />
-          ) : dayItems.length === 0 ? (
-            <p className="card px-4 py-3 text-sm text-muted">
-              {catFilter ? `No ${catFor(catFilter)?.label} logged this day` : "No spend logged this day 👻"}
-            </p>
-          ) : (
-            <div className="card divide-y divide-line">
-              {dayItems.map((e) => (
-                <ExpenseRow
-                  key={e.id}
-                  battleId={id}
-                  expense={e}
-                  category={catFor(e.category_id)}
-                  currency={currency}
-                />
-              ))}
-            </div>
-          )}
+      {/* Selected day entries */}
+      {dayExpenses.isLoading ? (
+        <div className="h-16 animate-pulse rounded-xl bg-surface" />
+      ) : dayItems.length === 0 ? (
+        <p className="card px-4 py-3 text-sm text-muted">
+          {catFilter ? `No ${catFor(catFilter)?.label} logged this day` : "No spend logged this day 👻"}
+        </p>
+      ) : (
+        <div className="card divide-y divide-line">
+          {dayItems.map((e) => (
+            <ExpenseRow key={e.id} battleId={id} expense={e} category={catFor(e.category_id)} currency={currency} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -446,9 +445,7 @@ function ExpenseRow({
         </div>
         <div className="text-right">
           <div className="font-semibold tabular-nums">{money(expense.amount_cents, currency)}</div>
-          <div className="text-xs text-faint">
-            {formatTime(expense.spent_at, tz)}
-          </div>
+          <div className="text-xs text-faint">{formatTime(expense.spent_at, tz)}</div>
         </div>
       </button>
     );

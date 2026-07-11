@@ -16,7 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "deploy": "bun run build && wrangler deploy"
+    "check": "bun run typecheck && bun run lint && bun run format:check && bun run test",
+    "deploy": "bun run check && bun run build && wrangler deploy"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.26.0",

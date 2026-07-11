@@ -125,7 +125,9 @@ function tzOffsetMs(date: Date, timeZone: string): number {
     second: "2-digit",
   }).formatToParts(date);
   const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
-  return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")) - date.getTime();
+  return (
+    Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")) - date.getTime()
+  );
 }
 
 /** An instant -> the "YYYY-MM-DDTHH:mm" an <input type="datetime-local"> wants, read in `timezone`. */

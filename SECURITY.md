@@ -34,6 +34,13 @@ This is maintained by one person, in their spare time — so no SLA, and no bug 
 - Denial of service, volumetric, or automated-scanner findings without a demonstrated impact
 - Anything requiring physical access to a user's unlocked device
 
-## Please don't
+## Testing guidelines
 
-Test against **your own accounts only**. Don't access, modify, or delete other people's spending data — it's real money for real people, and a couple of them are my siblings.
+If you find a way in, these are the limits — please stay inside them:
+
+- Test only against accounts you create yourself.
+- Do not access, modify, or delete data belonging to anyone else. Confirming a vulnerability on a second account of your own is enough; you don't need to touch real data to demonstrate impact.
+- Stop as soon as the issue is confirmed, and report it. Don't keep exploring to see how far it reaches.
+- No automated scanners, brute-forcing, or load testing against the live site.
+
+Report in good faith and stay within these limits, and I won't pursue anything over it.

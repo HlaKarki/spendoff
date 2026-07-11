@@ -6,5 +6,5 @@
   "main": "./src/server.ts",
   "observability": { "enabled": true },
   "services": [{ "binding": "BACKEND", "service": "general-backend" }],
-  "routes": [{ "pattern": "spendoff.us", "custom_domain": true }]
+  "routes": [{ "pattern": "spendoff.us", "custom_domain": true }],
 }

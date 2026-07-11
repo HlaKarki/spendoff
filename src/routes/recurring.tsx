@@ -164,14 +164,20 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
       setEditing(false);
     },
   });
-  const toggle = useMutation({ mutationFn: () => api.updateRecurring(rule.id, { active: !rule.active }), onSuccess: invalidate });
+  const toggle = useMutation({
+    mutationFn: () => api.updateRecurring(rule.id, { active: !rule.active }),
+    onSuccess: invalidate,
+  });
   const del = useMutation({ mutationFn: () => api.deleteRecurring(rule.id), onSuccess: invalidate });
 
   if (!editing) {
     return (
       <div className="flex items-center gap-3 px-4 py-3">
         <button onClick={() => setEditing(true)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-          <CategoryIcon name={category?.icon ?? "ellipsis"} className={cn("size-5 shrink-0", rule.active ? "text-faint" : "text-faint/40")} />
+          <CategoryIcon
+            name={category?.icon ?? "ellipsis"}
+            className={cn("size-5 shrink-0", rule.active ? "text-faint" : "text-faint/40")}
+          />
           <div className="min-w-0 flex-1">
             <div className={cn("truncate font-medium", !rule.active && "text-faint line-through")}>
               {category?.label ?? "Other"}
@@ -240,7 +246,11 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
         placeholder="Note (optional)"
       />
       <div className="flex items-center gap-2">
-        <button onClick={() => del.mutate()} disabled={del.isPending} className="btn-ghost px-3 py-2 text-sm text-danger">
+        <button
+          onClick={() => del.mutate()}
+          disabled={del.isPending}
+          className="btn-ghost px-3 py-2 text-sm text-danger"
+        >
           <Trash2 className="size-4" /> Delete
         </button>
         <div className="flex-1" />

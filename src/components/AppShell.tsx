@@ -28,7 +28,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (me.data === null) {
       // Never bounce the user back into an auth route (would loop after sign-in).
-      const from = location.pathname.startsWith("/onboard") || location.pathname.startsWith("/auth") ? "/" : location.pathname;
+      const from =
+        location.pathname.startsWith("/onboard") || location.pathname.startsWith("/auth") ? "/" : location.pathname;
       navigate({ to: "/onboard", search: { redirect: from } });
     }
   }, [me.data, navigate, location.pathname]);

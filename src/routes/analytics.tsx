@@ -76,7 +76,9 @@ function AnalyticsScreen() {
           {analytics.isLoading ? (
             <div className="mx-auto h-9 w-32 animate-pulse rounded-lg bg-surface" />
           ) : (
-            <p className="font-display text-4xl font-black tabular-nums">{money(analytics.data?.month_total_cents ?? 0)}</p>
+            <p className="font-display text-4xl font-black tabular-nums">
+              {money(analytics.data?.month_total_cents ?? 0)}
+            </p>
           )}
           <MonthDelta data={analytics.data} ym={ym} />
         </div>

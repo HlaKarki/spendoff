@@ -45,7 +45,7 @@ export async function flushOutbox(): Promise<{ synced: number; remaining: number
   const items = await pending();
   if (items.length === 0) return { synced: 0, remaining: 0 };
   try {
-    await api.syncExpenses(
+    const res = await api.syncExpenses(
       items.map((i) => ({
         client_id: i.client_id,
         amount_cents: i.amount_cents,
@@ -54,8 +54,11 @@ export async function flushOutbox(): Promise<{ synced: number; remaining: number
         spent_at: i.spent_at,
       })),
     );
-    for (const i of items) await removeItem(i.client_id);
-    return { synced: items.length, remaining: 0 };
+    // Drop only what the server confirmed it saved. It may skip items it can't accept (e.g. an
+    // unknown category) and echo back the rest; removing an unconfirmed item would lose it silently.
+    const confirmed = new Set(res.expenses.map((e) => e.client_id));
+    for (const i of items) if (confirmed.has(i.client_id)) await removeItem(i.client_id);
+    return { synced: confirmed.size, remaining: items.length - confirmed.size };
   } catch {
     return { synced: 0, remaining: items.length };
   }

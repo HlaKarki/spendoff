@@ -70,10 +70,16 @@ function Onboard() {
 
   async function sendMagic() {
     setError(null);
-    if (!email.trim()) return setError("Enter your email first.");
+    if (!email.trim() || (mode === "create" && !name.trim())) {
+      return setError(mode === "create" ? "Enter your name and email." : "Enter your email first.");
+    }
     setBusy(true);
     try {
-      const res = await api.magicRequest({ email: email.trim(), timezone: browserTimezone() });
+      const res = await api.magicRequest({
+        email: email.trim(),
+        display_name: mode === "create" ? name.trim() : undefined,
+        timezone: browserTimezone(),
+      });
       setMagicSent(res.dev_link ?? "");
     } catch (e) {
       setError(errMsg(e));

@@ -59,6 +59,10 @@ async function apiFetch<T>(path: string, init?: RequestInit & { json?: unknown }
 // ── Auth ───────────────────────────────────────────────────────────────────
 export const api = {
   me: () => apiFetch<{ user: User }>("/auth/me"),
+  // Changing the timezone re-buckets existing expenses into the months they fall in under the new
+  // zone; `rebucketed_expenses` is how many moved.
+  updateMe: (json: { timezone: string }) =>
+    apiFetch<{ user: User; rebucketed_expenses: number }>("/auth/me", { method: "PATCH", json }),
   logout: () => apiFetch<{ ok: boolean }>("/auth/logout", { method: "POST" }),
 
   registerOptions: (json: { email: string; display_name: string; timezone?: string }) =>
@@ -69,7 +73,7 @@ export const api = {
     apiFetch<Record<string, unknown>>("/auth/login/options", { method: "POST", json }),
   loginVerify: (json: { response: unknown }) =>
     apiFetch<{ user: User }>("/auth/login/verify", { method: "POST", json }),
-  magicRequest: (json: { email: string; timezone?: string }) =>
+  magicRequest: (json: { email: string; display_name?: string; timezone?: string }) =>
     apiFetch<{ ok: boolean; dev_link?: string }>("/auth/magic-link/request", { method: "POST", json }),
   magicVerify: (json: { token: string }) =>
     apiFetch<{ user: User }>("/auth/magic-link/verify", { method: "POST", json }),

@@ -7,7 +7,17 @@ import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { StandingsRows } from "../components/Standings";
 import { api } from "../lib/api";
-import { currentDayOfMonth, currentYearMonth, formatMonth, formatMonthShort, money, relativeDay } from "../lib/format";
+import {
+  currentDayOfMonth,
+  currentYearMonth,
+  datetimeLocalInTz,
+  datetimeLocalToUtc,
+  formatMonth,
+  formatMonthShort,
+  formatTime,
+  money,
+  relativeDayKey,
+} from "../lib/format";
 import {
   useAnalytics,
   useBattle,
@@ -16,6 +26,7 @@ import {
   useMe,
   useResults,
   useStandings,
+  useTimezone,
 } from "../lib/queries";
 import type { Category, Expense, WinRule } from "../lib/types";
 import { cn } from "../lib/utils";
@@ -188,24 +199,20 @@ function BattleDetail() {
 // Days of the battle month, oldest→newest, not past today for the current month.
 function monthDays(ym: string, tz?: string): string[] {
   const [y, m] = ym.split("-").map(Number);
-  const last = new Date(y, m, 0).getDate();
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const cap = ym === currentYearMonth(tz) ? currentDayOfMonth(tz) : last;
   return Array.from({ length: cap }, (_, i) => `${ym}-${String(i + 1).padStart(2, "0")}`);
 }
 
 function chipParts(key: string) {
   const [y, m, d] = key.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  return { weekday: date.toLocaleDateString("en-US", { weekday: "short" }), day: d };
+  // The weekday of a calendar date is a property of the date, not of any zone — build and read it
+  // in UTC so the chip can't drift with the device.
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return { weekday: date.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }), day: d };
 }
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
-
-// ISO timestamp -> value for <input type="datetime-local"> (local time, no tz).
-function toDatetimeLocal(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
 
 function MySpend({ id, months, currency }: { id: string; months: string[]; currency: string }) {
   const [sel, setSel] = useState(months[months.length - 1]);
@@ -346,7 +353,7 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
 
           {/* Selected day summary */}
           <div className="flex items-center justify-between px-1">
-            <span className="text-sm font-semibold">{relativeDay(`${selected}T12:00:00`)}</span>
+            <span className="text-sm font-semibold">{relativeDayKey(selected, tz)}</span>
             <span className="text-sm font-bold tabular-nums">{money(dayTotal, currency)}</span>
           </div>
 
@@ -387,11 +394,15 @@ function ExpenseRow({
 }) {
   const qc = useQueryClient();
   const categories = useCategories();
+  const tz = useTimezone();
   const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState(String(expense.amount_cents / 100));
   const [categoryId, setCategoryId] = useState(expense.category_id);
   const [note, setNote] = useState(expense.note ?? "");
-  const [spentAt, setSpentAt] = useState(toDatetimeLocal(expense.spent_at));
+  // Derived rather than seeded into state: `tz` is undefined on the first render, so freezing the
+  // initial value would pin the field to the device's zone even after the account's arrives.
+  const [spentAtEdit, setSpentAtEdit] = useState<string | null>(null);
+  const spentAt = spentAtEdit ?? datetimeLocalInTz(expense.spent_at, tz);
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ["expenses"] });
@@ -407,7 +418,9 @@ function ExpenseRow({
         amount_cents: Math.round(Number(amount || 0) * 100),
         category_id: categoryId,
         note: note.trim() || null,
-        spent_at: spentAt ? new Date(spentAt).toISOString() : undefined,
+        // The field holds a wall-clock time in the account's zone, not the device's — convert with
+        // that zone, or an edit made while travelling would silently shift the expense.
+        spent_at: spentAt ? datetimeLocalToUtc(spentAt, tz) : undefined,
       }),
     onSuccess: () => {
       invalidate();
@@ -434,7 +447,7 @@ function ExpenseRow({
         <div className="text-right">
           <div className="font-semibold tabular-nums">{money(expense.amount_cents, currency)}</div>
           <div className="text-xs text-faint">
-            {new Date(expense.spent_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+            {formatTime(expense.spent_at, tz)}
           </div>
         </div>
       </button>
@@ -483,7 +496,7 @@ function ExpenseRow({
           type="datetime-local"
           className="input w-auto flex-1 py-2 [color-scheme:dark]"
           value={spentAt}
-          onChange={(e) => setSpentAt(e.target.value)}
+          onChange={(e) => setSpentAtEdit(e.target.value)}
         />
       </label>
       <div className="flex items-center gap-2">

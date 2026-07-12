@@ -58,11 +58,7 @@ function MemberLog() {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setOffset(offset + 1)}
-            className="text-faint"
-            aria-label="Previous month"
-          >
+          <button onClick={() => setOffset(offset + 1)} className="text-faint" aria-label="Previous month">
             <ChevronLeft className="size-5" />
           </button>
           <span className="min-w-[5.5rem] text-center text-sm font-semibold">{formatMonthShort(ym)}</span>

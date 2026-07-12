@@ -280,10 +280,7 @@ function Switch({ on }: { on: boolean }) {
       )}
     >
       <span
-        className={cn(
-          "absolute top-1 size-4 rounded-full bg-white transition-all",
-          on ? "left-[1.375rem]" : "left-1",
-        )}
+        className={cn("absolute top-1 size-4 rounded-full bg-white transition-all", on ? "left-[1.375rem]" : "left-1")}
       />
     </span>
   );

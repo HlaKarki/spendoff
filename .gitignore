@@ -15,3 +15,7 @@ todos.json
 # Design docs — kept local, not published (reference internal hla-backend)
 docs/
 .dev.vars*
+
+# Playwright artifacts — regenerated on every run.
+test-results/
+playwright-report/

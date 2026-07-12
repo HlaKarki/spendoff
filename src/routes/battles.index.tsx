@@ -133,8 +133,8 @@ function Sheet({ kind, onClose }: { kind: "create" | "join"; onClose: () => void
               ))}
             </select>
             <p className="mt-1.5 text-xs text-faint">
-              Everyone is scored in this, whatever they each spend in. It can't be changed later —
-              past months are already settled in it.
+              Everyone is scored in this, whatever they each spend in. It can't be changed later — past months are
+              already settled in it.
             </p>
           </>
         ) : (

@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { api, ApiError } from "../lib/api";
-import { browserTimezone } from "../lib/format";
+import { browserCurrency, browserTimezone } from "../lib/format";
 import type { User } from "../lib/types";
 
 export const Route = createFileRoute("/onboard")({
@@ -42,6 +42,7 @@ function Onboard() {
         email: email.trim(),
         display_name: name.trim(),
         timezone: browserTimezone(),
+        base_currency: browserCurrency(),
       });
       const attResp = await startRegistration({ optionsJSON: optionsJSON as never });
       const { user } = await api.registerVerify({ response: attResp });
@@ -79,6 +80,7 @@ function Onboard() {
         email: email.trim(),
         display_name: mode === "create" ? name.trim() : undefined,
         timezone: browserTimezone(),
+        base_currency: browserCurrency(),
       });
       setMagicSent(res.dev_link ?? "");
     } catch (e) {

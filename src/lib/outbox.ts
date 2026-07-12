@@ -7,16 +7,27 @@ const STORE = "outbox";
 export interface OutboxItem {
   client_id: string;
   amount_cents: number;
+  /**
+   * The currency the amount is in. Optional on purpose: an item queued before this field existed
+   * has none, and the server reads "no currency" as "the user's base currency" — which is exactly
+   * what a v1 client, having no way to log anything else, always meant.
+   */
+  currency?: string;
   category_id: string;
   note?: string | null;
   spent_at?: string;
   queued_at: string;
 }
 
+// v2 adds `currency` to queued items. No migration step is needed — the field is optional and old
+// items are already correct without it (see OutboxItem.currency) — but the version bump is still
+// required so a browser holding a v1 database opens it rather than failing the version check.
+const DB_VERSION = 2;
+
 let dbp: Promise<IDBPDatabase> | null = null;
 function db() {
   if (!dbp) {
-    dbp = openDB(DB_NAME, 1, {
+    dbp = openDB(DB_NAME, DB_VERSION, {
       upgrade(d) {
         if (!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE, { keyPath: "client_id" });
       },
@@ -49,13 +60,16 @@ export async function flushOutbox(): Promise<{ synced: number; remaining: number
       items.map((i) => ({
         client_id: i.client_id,
         amount_cents: i.amount_cents,
+        currency: i.currency,
         category_id: i.category_id,
         note: i.note,
         spent_at: i.spent_at,
       })),
     );
     // Drop only what the server confirmed it saved. It may skip items it can't accept (e.g. an
-    // unknown category) and echo back the rest; removing an unconfirmed item would lose it silently.
+    // unknown category) or can't yet price (a foreign currency while the rate feed is behind) and
+    // echo back the rest; removing an unconfirmed item would lose it silently. A skipped item stays
+    // queued and rides along on the next flush.
     const confirmed = new Set(res.expenses.map((e) => e.client_id));
     for (const i of items) if (confirmed.has(i.client_id)) await removeItem(i.client_id);
     return { synced: confirmed.size, remaining: items.length - confirmed.size };

@@ -1,15 +1,23 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { Delete, Check, Repeat, CalendarDays } from "lucide-react";
+import { Delete, Check, Coins, Repeat, CalendarDays } from "lucide-react";
 import { useRef, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { api } from "../lib/api";
-import { loggableDayRange, money, relativeDayKey, shiftDay, spentAtForDay, todayInTz } from "../lib/format";
+import {
+  loggableDayRange,
+  money,
+  relativeDayKey,
+  resolveCurrency,
+  shiftDay,
+  spentAtForDay,
+  todayInTz,
+} from "../lib/format";
 import { logExpense } from "../lib/outbox";
-import { useCategories, useMe } from "../lib/queries";
+import { useCategories, useCurrencies, useMe } from "../lib/queries";
 import { cn } from "../lib/utils";
 
 function ordinal(n: number): string {
@@ -32,6 +40,7 @@ const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "del"] as 
 
 function LogScreen() {
   const categories = useCategories();
+  const currencies = useCurrencies();
   const me = useMe();
   const qc = useQueryClient();
   const tz = me.data?.timezone;
@@ -42,6 +51,13 @@ function LogScreen() {
   const [repeat, setRepeat] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; offline: boolean } | null>(null);
+
+  // Same reasoning as `dayEdit` below: the base currency is undefined until `useMe` resolves, so
+  // seeding state with it would pin the keypad to USD even after the account's own arrives.
+  const [currencyEdit, setCurrencyEdit] = useState<string | null>(null);
+  const baseCurrency = resolveCurrency(me.data?.base_currency);
+  const currency = currencyEdit ?? baseCurrency;
+  const isForeign = currency !== baseCurrency;
 
   // Derived, not seeded into state: `tz` is undefined until `useMe` resolves, so an initial value
   // would pin the default day to the device's zone even after the account's arrives.
@@ -88,6 +104,7 @@ function LogScreen() {
         // but only once the chosen day has arrived. Pick a day still ahead and the rule simply waits.
         await api.createRecurring({
           amount_cents: cents,
+          currency,
           category_id: categoryId,
           note: note.trim() || null,
           day_of_month: dom,
@@ -96,6 +113,7 @@ function LogScreen() {
         const res = await logExpense({
           client_id: crypto.randomUUID(),
           amount_cents: cents,
+          currency,
           category_id: categoryId,
           note: note.trim() || null,
           // Not `now` — the entry belongs to the day the user picked, read in their zone.
@@ -110,6 +128,8 @@ function LogScreen() {
       setShowNote(false);
       setRepeat(false);
       setDayEdit(null);
+      // The currency is deliberately NOT reset: someone logging in euros is on a trip, and is about
+      // to log another one. It falls back to base on the next visit, not the next entry.
       setTimeout(() => setToast(null), 2200);
     } catch {
       setToast({ msg: "Couldn't save — try again", offline: false });
@@ -120,13 +140,12 @@ function LogScreen() {
   }
 
   function savedMessage(): string {
+    const amount = money(cents, currency);
     if (repeat) {
       // Nothing is logged yet when the day is still ahead — say so rather than claim a spend landed.
-      return dom > todayDom
-        ? `Repeats monthly · starts the ${ordinal(dom)}`
-        : `Logged ${money(cents)} · repeats monthly`;
+      return dom > todayDom ? `Repeats monthly · starts the ${ordinal(dom)}` : `Logged ${amount} · repeats monthly`;
     }
-    return day === today ? `Logged ${money(cents)}` : `Logged ${money(cents)} · ${relativeDayKey(day, tz)}`;
+    return day === today ? `Logged ${amount}` : `Logged ${amount} · ${relativeDayKey(day, tz)}`;
   }
 
   return (
@@ -178,13 +197,43 @@ function LogScreen() {
             className="pointer-events-none absolute inset-0 opacity-0"
           />
         </label>
+
+        {/* Currency sits with the day, not under the amount: both say how this entry was logged,
+            and this row already exists — a row of its own would push Save under the nav bar. */}
+        <label
+          className={cn(
+            "relative ml-auto flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-within:ring-2 focus-within:ring-accent/40",
+            isForeign ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+          )}
+        >
+          <Coins className="size-3.5" />
+          {currency}
+          <select
+            aria-label="Currency this was spent in"
+            value={currency}
+            onChange={(e) => setCurrencyEdit(e.target.value)}
+            className="absolute inset-0 cursor-pointer opacity-0"
+          >
+            {/* Until the catalogue loads, the only option is the one already selected — so the
+                control can't briefly offer a list that excludes the user's own currency. */}
+            {(currencies.data ?? [{ code: currency, label: currency }]).map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} — {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       <p className="mt-1.5 min-h-4 text-xs text-faint">
-        {day > today
-          ? "Counts toward this month's total right away"
-          : isCustomDay
-            ? "Backdated — this month only, once a month closes it's locked"
-            : ""}
+        {isForeign
+          ? // Not "today's rate": the ECB doesn't publish on weekends, so a Sunday spend honestly
+            // prices at Friday's. The exact rate and its date land on the expense once it's saved.
+            `Converted to ${baseCurrency} at the rate for the day you spent it`
+          : day > today
+            ? "Counts toward this month's total right away"
+            : isCustomDay
+              ? "Backdated — this month only, once a month closes it's locked"
+              : ""}
       </p>
 
       {/* Amount */}
@@ -192,7 +241,7 @@ function LogScreen() {
         <div
           className={cn("font-display font-black tabular-nums transition-colors", cents > 0 ? "text-fg" : "text-faint")}
         >
-          <span className="text-6xl">{money(cents)}</span>
+          <span className="text-6xl">{money(cents, currency)}</span>
         </div>
       </div>
 

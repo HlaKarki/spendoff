@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { api, ApiError } from "../lib/api";
-import { browserTimezone } from "../lib/format";
-import { useMe } from "../lib/queries";
+import { browserCurrency, browserTimezone } from "../lib/format";
+import { useCurrencies, useMe } from "../lib/queries";
 import { currentPushSubscription, disablePush, enablePush, isPushSupported } from "../lib/push";
 
 export const Route = createFileRoute("/settings")({
@@ -86,6 +86,8 @@ function Settings() {
         <Row label="Email" value={me.data?.email ?? "—"} />
       </section>
 
+      <BaseCurrencySection />
+
       <TimezoneSection />
 
       <Link to="/recurring" className="card flex items-center justify-between px-4 py-4">
@@ -151,6 +153,72 @@ function supportedZones(): string[] {
   } catch {
     return [];
   }
+}
+
+function BaseCurrencySection() {
+  const me = useMe();
+  const currencies = useCurrencies();
+  const qc = useQueryClient();
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const current = me.data?.base_currency;
+  const device = browserCurrency();
+
+  const save = useMutation({
+    mutationFn: (base_currency: string) => api.updateMe({ base_currency }),
+    onSuccess: async (res) => {
+      const n = res.reconverted_expenses;
+      setMsg(n > 0 ? `Saved. ${n} expense${n === 1 ? "" : "s"} re-priced in ${res.user.base_currency}.` : "Saved.");
+      // Every total the app shows is denominated in this, so nothing cached survives it — not just ["me"].
+      await qc.invalidateQueries();
+    },
+    onError: (e) => setMsg(e instanceof ApiError ? e.message : "Couldn't save that right now."),
+  });
+
+  return (
+    <section className="space-y-2">
+      <h2 className="label">Currency</h2>
+      <div className="card space-y-3 px-4 py-4">
+        <select
+          value={current ?? ""}
+          disabled={!current || save.isPending}
+          onChange={(e) => {
+            setMsg(null);
+            save.mutate(e.target.value);
+          }}
+          className="w-full rounded-lg bg-surface-2 px-3 py-2.5 font-medium disabled:opacity-60"
+        >
+          {!current && <option value="">Loading…</option>}
+          {(currencies.data ?? []).map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} — {c.label}
+            </option>
+          ))}
+        </select>
+
+        {!!current && current !== device && (
+          <button
+            onClick={() => {
+              setMsg(null);
+              save.mutate(device);
+            }}
+            disabled={save.isPending}
+            className="btn-outline w-full py-2.5 text-sm"
+          >
+            Use this device's currency ({device})
+          </button>
+        )}
+
+        <p className="text-xs text-faint">
+          Your totals are shown in this. You can still log a spend in any currency — it's converted at the rate for the
+          day you spent it, and the original is kept. Changing this re-prices your history from those originals, so
+          nothing drifts. Battles are scored in the battle's own currency.
+        </p>
+        {save.isPending && <p className="text-sm text-muted">Saving…</p>}
+        {msg && !save.isPending && <p className="text-sm text-muted">{msg}</p>}
+      </div>
+    </section>
+  );
 }
 
 function TimezoneSection() {

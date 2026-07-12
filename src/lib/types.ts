@@ -7,6 +7,8 @@ export interface User {
   email: string;
   display_name: string;
   timezone: string;
+  /** The currency this user's own totals are denominated in. Battles score in the battle's currency. */
+  base_currency: string;
   created_at: string | null;
 }
 
@@ -15,6 +17,14 @@ export interface Category {
   label: string;
   icon: string;
   sort_order: number;
+}
+
+export interface Currency {
+  code: string;
+  label: string;
+  symbol: string;
+  /** ISO 4217 minor units — 2 for USD, 0 for JPY. Needed to parse or render an amount at all. */
+  decimals: number;
 }
 
 export interface Battle {
@@ -43,11 +53,21 @@ export interface BattleDetail {
   my_budget_cents: number | null;
 }
 
+/**
+ * `amount_cents`/`currency` are what was actually spent. The `base_*` fields are that same spend
+ * converted once, at write time, into the owner's base currency — frozen, so a rate move later can't
+ * restate it. `rate_date` is the rate's publication date, so a converted figure can say where it
+ * came from.
+ */
 export interface Expense {
   id: string;
   client_id: string;
   amount_cents: number;
   currency: string;
+  base_currency: string;
+  base_amount_cents: number;
+  rate_to_base: number;
+  rate_date: string | null;
   category_id: string;
   note: string | null;
   spent_at: string;
@@ -87,8 +107,10 @@ export interface AnalyticsDayTotal {
   total_cents: number;
 }
 
+/** Every total here is in `base_currency`, summed from each expense's frozen conversion. */
 export interface Analytics {
   year_month: string;
+  base_currency: string;
   month_total_cents: number;
   by_category: AnalyticsCategoryTotal[];
   daily: AnalyticsDayTotal[];

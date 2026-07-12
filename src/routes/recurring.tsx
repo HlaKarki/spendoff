@@ -6,8 +6,8 @@ import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { api } from "../lib/api";
-import { money } from "../lib/format";
-import { useCategories, useRecurring } from "../lib/queries";
+import { money, resolveCurrency, toMajor, toMinor } from "../lib/format";
+import { useBaseCurrency, useCategories, useCurrencies, useRecurring } from "../lib/queries";
 import type { Category, RecurringExpense } from "../lib/types";
 import { cn } from "../lib/utils";
 
@@ -66,15 +66,24 @@ function RecurringScreen() {
 function AddRecurring() {
   const qc = useQueryClient();
   const categories = useCategories();
+  const currencies = useCurrencies();
+  const baseCurrency = resolveCurrency(useBaseCurrency());
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [day, setDay] = useState("1");
   const [note, setNote] = useState("");
 
+  // Derived, not seeded: the base currency is undefined until `useMe` resolves, so an initial value
+  // would pin the field to USD even after the account's own arrives.
+  const [currencyEdit, setCurrencyEdit] = useState<string | null>(null);
+  const currency = currencyEdit ?? baseCurrency;
+
   const create = useMutation({
     mutationFn: () =>
       api.createRecurring({
-        amount_cents: Math.round(Number(amount || 0) * 100),
+        // Parsed in the rule's own currency: "1000" against a ¥ rule is ¥1000, not ¥100,000.
+        amount_cents: toMinor(Number(amount || 0), currency),
+        currency,
         category_id: categoryId!,
         day_of_month: clampDay(day),
         note: note.trim() || null,
@@ -85,6 +94,7 @@ function AddRecurring() {
       setCategoryId(null);
       setDay("1");
       setNote("");
+      setCurrencyEdit(null);
     },
   });
 
@@ -93,13 +103,30 @@ function AddRecurring() {
   return (
     <section className="card space-y-3 px-4 py-4">
       <h2 className="label">Add a recurring expense</h2>
-      <input
-        className="input py-2"
-        inputMode="decimal"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-        placeholder="Amount (e.g. 1500)"
-      />
+      <div className="flex gap-2">
+        <input
+          className="input flex-1 py-2"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+          placeholder="Amount (e.g. 1500)"
+          aria-label={`Amount in ${currency}`}
+        />
+        <select
+          aria-label="Currency"
+          value={currency}
+          onChange={(e) => setCurrencyEdit(e.target.value)}
+          className="rounded-lg bg-surface-2 px-3 py-2 font-medium"
+        >
+          {/* Until the catalogue loads, the only option is the one already selected — so the control
+              can't briefly offer a list that excludes the user's own currency. */}
+          {(currencies.data ?? [{ code: currency }]).map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="grid grid-cols-5 gap-2">
         {categories.data?.map((c) => (
           <button
@@ -144,7 +171,7 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
   const categories = useCategories();
   const category: Category | null = categories.data?.find((c) => c.id === rule.category_id) ?? null;
   const [editing, setEditing] = useState(false);
-  const [amount, setAmount] = useState(String(rule.amount_cents / 100));
+  const [amount, setAmount] = useState(String(toMajor(rule.amount_cents, rule.currency)));
   const [categoryId, setCategoryId] = useState(rule.category_id);
   const [day, setDay] = useState(String(rule.day_of_month));
   const [note, setNote] = useState(rule.note ?? "");
@@ -154,7 +181,9 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
   const save = useMutation({
     mutationFn: () =>
       api.updateRecurring(rule.id, {
-        amount_cents: Math.round(Number(amount || 0) * 100),
+        // A rule's currency is fixed at creation — only the amount is editable, and it's parsed in
+        // that currency.
+        amount_cents: toMinor(Number(amount || 0), rule.currency),
         category_id: categoryId,
         day_of_month: clampDay(day),
         note: note.trim() || null,

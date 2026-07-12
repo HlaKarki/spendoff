@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
-import { currentYearMonth, formatMonth, money } from "../lib/format";
+import { currentYearMonth, formatMonth, money, resolveCurrency } from "../lib/format";
 import { useAnalytics, useMe } from "../lib/queries";
 import type { Analytics } from "../lib/types";
 import { cn } from "../lib/utils";
@@ -77,7 +77,7 @@ function AnalyticsScreen() {
             <div className="mx-auto h-9 w-32 animate-pulse rounded-lg bg-surface" />
           ) : (
             <p className="font-display text-4xl font-black tabular-nums">
-              {money(analytics.data?.month_total_cents ?? 0)}
+              {money(analytics.data?.month_total_cents ?? 0, resolveCurrency(analytics.data?.base_currency))}
             </p>
           )}
           <MonthDelta data={analytics.data} ym={ym} />
@@ -137,6 +137,8 @@ function MonthlyTrend({
 
   const monthly = data.monthly;
   const max = Math.max(1, ...monthly.map((m) => m.total_cents));
+  // Every total the endpoint returns is already in this — mixed-currency months included.
+  const currency = resolveCurrency(data.base_currency);
 
   return (
     <section className="space-y-2">
@@ -154,7 +156,7 @@ function MonthlyTrend({
                 disabled={future}
                 onClick={() => onSelect(m.year_month)}
                 className="group flex h-full flex-1 items-end disabled:cursor-default"
-                aria-label={`${formatMonth(m.year_month)}: ${money(m.total_cents)}`}
+                aria-label={`${formatMonth(m.year_month)}: ${money(m.total_cents, currency)}`}
               >
                 <div
                   className="w-full rounded-t-md transition-all"
@@ -201,6 +203,7 @@ function CategoryBreakdown({ data, loading, ym }: { data?: Analytics; loading: b
   }
 
   const max = Math.max(1, ...cats.map((c) => c.total_cents));
+  const currency = resolveCurrency(data.base_currency);
   const total = data.month_total_cents;
 
   return (
@@ -217,7 +220,7 @@ function CategoryBreakdown({ data, loading, ym }: { data?: Analytics; loading: b
                   <span className="font-medium">{c.label}</span>
                 </span>
                 <span className="tabular-nums">
-                  <span className="font-semibold">{money(c.total_cents)}</span>
+                  <span className="font-semibold">{money(c.total_cents, currency)}</span>
                   <span className="ml-1.5 text-xs text-faint">{pct}%</span>
                 </span>
               </div>

@@ -72,6 +72,42 @@ describe("flushOutbox", () => {
     expect(await outbox.pending()).toHaveLength(0);
   });
 
+  test("the currency a spend was logged in survives the queue", async () => {
+    // The whole point of queuing it: an expense logged in euros on a plane must still be euros when
+    // it lands. Dropping the field would silently re-denominate it into the user's base currency.
+    await outbox.enqueue({ ...item("a"), currency: "EUR", queued_at: "t" });
+    syncExpenses.mockResolvedValue({ synced: 1, expenses: [saved("a")] });
+
+    await outbox.flushOutbox();
+
+    expect(syncExpenses.mock.calls[0][0][0].currency).toBe("EUR");
+  });
+
+  test("an item queued before currencies existed syncs with none, and the server reads that as 'base'", async () => {
+    // A v1 client could only log in the user's base currency, so a missing field is not missing
+    // information — it means exactly that. It must not block the flush.
+    await outbox.enqueue({ ...item("a"), queued_at: "t" });
+    syncExpenses.mockResolvedValue({ synced: 1, expenses: [saved("a")] });
+
+    const res = await outbox.flushOutbox();
+
+    expect(syncExpenses.mock.calls[0][0][0].currency).toBeUndefined();
+    expect(res).toEqual({ synced: 1, remaining: 0 });
+  });
+
+  test("an item the server couldn't price yet stays queued for the next flush", async () => {
+    // A foreign-currency spend is refused (503) while the rate feed is behind, and the server just
+    // omits it from the echo. Dropping it here would lose the expense for good.
+    await outbox.enqueue({ ...item("a"), currency: "EUR", queued_at: "t" });
+    await outbox.enqueue({ ...item("b"), queued_at: "t" });
+    syncExpenses.mockResolvedValue({ synced: 1, expenses: [saved("b")] });
+
+    const res = await outbox.flushOutbox();
+
+    expect(res).toEqual({ synced: 1, remaining: 1 });
+    expect((await outbox.pending()).map((i) => i.client_id)).toEqual(["a"]);
+  });
+
   // THE load-bearing property: going offline must never lose a logged expense.
   test("a failed sync retains every item for retry — nothing is lost", async () => {
     await outbox.enqueue({ ...item("a"), queued_at: "t" });

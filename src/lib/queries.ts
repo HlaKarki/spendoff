@@ -27,10 +27,28 @@ export function useTimezone(): string | undefined {
   return useMe().data?.timezone;
 }
 
+/**
+ * The account's base currency, or undefined while `useMe` is still in flight. Pass straight to
+ * `money()` — it falls back to USD until this resolves. This is the currency of the user's OWN
+ * totals; anything battle-scoped must use that battle's currency instead.
+ */
+export function useBaseCurrency(): string | undefined {
+  return useMe().data?.base_currency;
+}
+
 export function useCategories() {
   return useQuery({
     queryKey: ["categories"],
     queryFn: async () => (await api.categories()).categories,
+    staleTime: Infinity,
+  });
+}
+
+/** The currencies the server can price. Static for a session — the set only changes on deploy. */
+export function useCurrencies() {
+  return useQuery({
+    queryKey: ["currencies"],
+    queryFn: async () => (await api.currencies()).currencies,
     staleTime: Infinity,
   });
 }

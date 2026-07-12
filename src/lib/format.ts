@@ -1,15 +1,153 @@
-export function money(cents: number, currency = "USD"): string {
-  const sign = cents < 0 ? "-" : "";
-  const abs = Math.abs(cents);
-  const value = (abs / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const symbol = currency === "USD" ? "$" : `${currency} `;
-  return `${sign}${symbol}${value}`;
+/* ── Money ─────────────────────────────────────────────────────────────────
+ * Amounts cross the wire as integer minor units. How many minor units make a major one is a
+ * property of the currency and is NOT always 100 — ¥1000 is a thousand yen, not ten — so nothing
+ * here divides by a hard-coded 100.
+ *
+ * Intl knows each currency's minor-unit count and its local symbol, which is why formatting goes
+ * through it rather than a symbol lookup table: CA$ and $ both exist, and only Intl gets that right.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+export const DEFAULT_CURRENCY = "USD";
+
+/** Minor units per major unit, asked of Intl so it stays right for currencies we've never seen. */
+export function minorUnits(currency: string): number {
+  return currencyFormat(currency).resolvedOptions().maximumFractionDigits ?? 2;
 }
 
-export function moneyShort(cents: number, currency = "USD"): string {
-  const symbol = currency === "USD" ? "$" : `${currency} `;
-  const whole = Math.round(cents / 100);
-  return `${symbol}${whole.toLocaleString("en-US")}`;
+/** Minor-unit integer → major-unit number. 4237 USD cents → 42.37; 4237 JPY → 4237. */
+export function toMajor(minor: number, currency: string): number {
+  return minor / 10 ** minorUnits(currency);
+}
+
+/** Major-unit number → minor-unit integer. The inverse of `toMajor`, for parsing typed input. */
+export function toMinor(major: number, currency: string): number {
+  return Math.round(major * 10 ** minorUnits(currency));
+}
+
+// Intl.NumberFormat construction is not free and these are hit in list renders; one per currency.
+const formatters = new Map<string, Intl.NumberFormat>();
+
+/**
+ * A currency formatter, or — for a code Intl doesn't know — a plain decimal one.
+ *
+ * The fallback deliberately does NOT reach for USD: rendering an unknown currency with a dollar
+ * sign would state something false about the amount. A bare number the caller labels itself is the
+ * safe failure.
+ */
+function currencyFormat(currency: string, fractionDigits?: number): Intl.NumberFormat {
+  const key = `${currency}:${fractionDigits ?? "auto"}`;
+  let fmt = formatters.get(key);
+  if (!fmt) {
+    const digits =
+      fractionDigits === undefined
+        ? {}
+        : { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits };
+    try {
+      fmt = new Intl.NumberFormat("en-US", { style: "currency", currency, ...digits });
+    } catch {
+      fmt = new Intl.NumberFormat("en-US", digits);
+    }
+    formatters.set(key, fmt);
+  }
+  return fmt;
+}
+
+function isKnown(currency: string): boolean {
+  return currencyFormat(currency).resolvedOptions().style === "currency";
+}
+
+/** "$42.37" / "CA$42.37" / "¥4,237" — an integer minor-unit amount, rendered in its currency. */
+export function money(minor: number, currency = DEFAULT_CURRENCY): string {
+  const text = currencyFormat(currency).format(toMajor(minor, currency));
+  return isKnown(currency) ? text : `${currency} ${text}`;
+}
+
+/** As `money`, but without the fractional part — for axis labels and other tight spots. */
+export function moneyShort(minor: number, currency = DEFAULT_CURRENCY): string {
+  const text = currencyFormat(currency, 0).format(toMajor(minor, currency));
+  return isKnown(currency) ? text : `${currency} ${text}`;
+}
+
+/**
+ * The currency to render an amount in when none is attached to it.
+ *
+ * The account's base currency is the truth, but it arrives with `useMe`, so until that resolves USD
+ * is the stated default rather than a guess that would flicker. Mirrors `resolveTimezone` — prefer
+ * `useBaseCurrency()` in components, and pass a battle's own currency for anything battle-scoped.
+ */
+export function resolveCurrency(currency?: string): string {
+  return currency || DEFAULT_CURRENCY;
+}
+
+// The currency each region actually spends. Only regions whose currency the backend can price are
+// worth listing — a guess we can't fetch a rate for is worse than the default.
+const REGION_CURRENCY: Record<string, string> = {
+  US: "USD",
+  CA: "CAD",
+  GB: "GBP",
+  AU: "AUD",
+  NZ: "NZD",
+  CH: "CHF",
+  SE: "SEK",
+  NO: "NOK",
+  DK: "DKK",
+  PL: "PLN",
+  CZ: "CZK",
+  SG: "SGD",
+  HK: "HKD",
+  IN: "INR",
+  MX: "MXN",
+  BR: "BRL",
+  ZA: "ZAR",
+  CN: "CNY",
+  TH: "THB",
+  MY: "MYR",
+  PH: "PHP",
+  ID: "IDR",
+  TR: "TRY",
+  IL: "ILS",
+  JP: "JPY",
+  KR: "KRW",
+  IS: "ISK",
+  // Eurozone
+  AT: "EUR",
+  BE: "EUR",
+  CY: "EUR",
+  DE: "EUR",
+  EE: "EUR",
+  ES: "EUR",
+  FI: "EUR",
+  FR: "EUR",
+  GR: "EUR",
+  HR: "EUR",
+  IE: "EUR",
+  IT: "EUR",
+  LT: "EUR",
+  LU: "EUR",
+  LV: "EUR",
+  MT: "EUR",
+  NL: "EUR",
+  PT: "EUR",
+  SI: "EUR",
+  SK: "EUR",
+};
+
+/**
+ * The currency this device most likely spends in, from its locale's region ("en-CA" → CAD).
+ *
+ * A suggestion offered at signup, exactly as `browserTimezone()` is — a Canadian shouldn't have to
+ * find Settings before a single number in the app is right. It is never applied to an existing
+ * account: a returning user's stored choice is the truth, however they came by it. There is no
+ * browser API for "my currency", so region is the closest honest proxy, and USD is the fallback
+ * when the locale names no region we recognise.
+ */
+export function browserCurrency(): string {
+  try {
+    const region = new Intl.Locale(navigator.language).maximize().region;
+    return (region && REGION_CURRENCY[region]) || DEFAULT_CURRENCY;
+  } catch {
+    return DEFAULT_CURRENCY;
+  }
 }
 
 const MONTHS = [

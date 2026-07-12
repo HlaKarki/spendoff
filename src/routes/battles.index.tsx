@@ -5,7 +5,8 @@ import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { api, ApiError } from "../lib/api";
-import { useBattles } from "../lib/queries";
+import { resolveCurrency } from "../lib/format";
+import { useBaseCurrency, useBattles, useCurrencies } from "../lib/queries";
 
 export const Route = createFileRoute("/battles/")({
   component: () => (
@@ -70,12 +71,19 @@ function BattlesScreen() {
 function Sheet({ kind, onClose }: { kind: "create" | "join"; onClose: () => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const currencies = useCurrencies();
+  const baseCurrency = resolveCurrency(useBaseCurrency());
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Derived, not seeded: the base currency is undefined until `useMe` resolves, so an initial value
+  // would pin the field to USD even after the account's own arrives.
+  const [currencyEdit, setCurrencyEdit] = useState<string | null>(null);
+  const currency = currencyEdit ?? baseCurrency;
+
   const create = useMutation({
-    mutationFn: () => api.createBattle({ name: name.trim() }),
+    mutationFn: () => api.createBattle({ name: name.trim(), currency }),
     onSuccess: async (res) => {
       await qc.invalidateQueries({ queryKey: ["battles"] });
       navigate({ to: "/battles/$id", params: { id: res.battle.id } });
@@ -109,6 +117,25 @@ function Sheet({ kind, onClose }: { kind: "create" | "join"; onClose: () => void
               onChange={(e) => setName(e.target.value)}
               placeholder="Sibling Showdown"
             />
+
+            <label className="label mb-1.5 mt-4 block">Currency</label>
+            <select
+              value={currency}
+              onChange={(e) => setCurrencyEdit(e.target.value)}
+              className="w-full rounded-lg bg-surface-2 px-3 py-2.5 font-medium"
+            >
+              {/* Until the catalogue loads, the only option is the one already selected — so the
+                  control can't briefly offer a list that excludes the user's own currency. */}
+              {(currencies.data ?? [{ code: currency, label: currency }]).map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} — {c.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-faint">
+              Everyone is scored in this, whatever they each spend in. It can't be changed later —
+              past months are already settled in it.
+            </p>
           </>
         ) : (
           <>

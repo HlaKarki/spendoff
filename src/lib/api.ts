@@ -3,6 +3,7 @@ import type {
   Battle,
   BattleDetail,
   Category,
+  Currency,
   Expense,
   MonthlyResult,
   RecurringExpense,
@@ -59,13 +60,20 @@ async function apiFetch<T>(path: string, init?: RequestInit & { json?: unknown }
 // ── Auth ───────────────────────────────────────────────────────────────────
 export const api = {
   me: () => apiFetch<{ user: User }>("/auth/me"),
-  // Changing the timezone re-buckets existing expenses into the months they fall in under the new
-  // zone; `rebucketed_expenses` is how many moved.
-  updateMe: (json: { timezone: string }) =>
-    apiFetch<{ user: User; rebucketed_expenses: number }>("/auth/me", { method: "PATCH", json }),
+  // Both preferences rewrite derived data, and the response says how much moved. Changing the
+  // timezone re-buckets expenses into the months they fall in under the new zone
+  // (`rebucketed_expenses`); changing the base currency re-prices them from their originals
+  // (`reconverted_expenses`).
+  updateMe: (json: { timezone?: string; base_currency?: string }) =>
+    apiFetch<{ user: User; rebucketed_expenses: number; reconverted_expenses: number }>("/auth/me", {
+      method: "PATCH",
+      json,
+    }),
   logout: () => apiFetch<{ ok: boolean }>("/auth/logout", { method: "POST" }),
 
-  registerOptions: (json: { email: string; display_name: string; timezone?: string }) =>
+  // `timezone` / `base_currency` are device-derived hints the server takes as defaults for the new
+  // account; both are editable in Settings afterwards.
+  registerOptions: (json: { email: string; display_name: string; timezone?: string; base_currency?: string }) =>
     apiFetch<Record<string, unknown>>("/auth/register/options", { method: "POST", json }),
   registerVerify: (json: { response: unknown }) =>
     apiFetch<{ user: User }>("/auth/register/verify", { method: "POST", json }),
@@ -73,13 +81,15 @@ export const api = {
     apiFetch<Record<string, unknown>>("/auth/login/options", { method: "POST", json }),
   loginVerify: (json: { response: unknown }) =>
     apiFetch<{ user: User }>("/auth/login/verify", { method: "POST", json }),
-  magicRequest: (json: { email: string; display_name?: string; timezone?: string }) =>
+  magicRequest: (json: { email: string; display_name?: string; timezone?: string; base_currency?: string }) =>
     apiFetch<{ ok: boolean; dev_link?: string }>("/auth/magic-link/request", { method: "POST", json }),
   magicVerify: (json: { token: string }) =>
     apiFetch<{ user: User }>("/auth/magic-link/verify", { method: "POST", json }),
 
-  // ── Categories ────────────────────────────────────────────────────────────
+  // ── Categories & currencies ───────────────────────────────────────────────
   categories: () => apiFetch<{ categories: Category[] }>("/categories"),
+  // The set the server can actually price; each carries its minor-unit count.
+  currencies: () => apiFetch<{ currencies: Currency[] }>("/currencies"),
 
   // ── Battles ───────────────────────────────────────────────────────────────
   listBattles: () => apiFetch<{ battles: Battle[] }>("/battles"),
@@ -97,8 +107,17 @@ export const api = {
     apiFetch<{ ok: boolean }>(`/battles/${id}/budget/${ym}`, { method: "PUT", json }),
 
   // ── Expenses ──────────────────────────────────────────────────────────────
+  // `currency` omitted means "spent in my base currency" — the common case, and the only one that
+  // needs no exchange rate.
   createExpense: (
-    json: { amount_cents: number; category_id: string; note?: string | null; spent_at?: string; client_id?: string },
+    json: {
+      amount_cents: number;
+      category_id: string;
+      currency?: string;
+      note?: string | null;
+      spent_at?: string;
+      client_id?: string;
+    },
     idempotencyKey?: string,
   ) =>
     apiFetch<{ expense: Expense }>("/expenses", {
@@ -111,6 +130,7 @@ export const api = {
       client_id: string;
       amount_cents: number;
       category_id: string;
+      currency?: string;
       note?: string | null;
       spent_at?: string;
     }>,
@@ -133,14 +153,19 @@ export const api = {
   },
   updateExpense: (
     id: string,
-    json: { amount_cents?: number; category_id?: string; note?: string | null; spent_at?: string },
+    json: { amount_cents?: number; currency?: string; category_id?: string; note?: string | null; spent_at?: string },
   ) => apiFetch<{ expense: Expense }>(`/expenses/${id}`, { method: "PATCH", json }),
   deleteExpense: (id: string) => apiFetch<{ ok: boolean }>(`/expenses/${id}`, { method: "DELETE" }),
 
   // ── Recurring ─────────────────────────────────────────────────────────────
   listRecurring: () => apiFetch<{ recurring: RecurringExpense[] }>("/recurring"),
-  createRecurring: (json: { amount_cents: number; category_id: string; note?: string | null; day_of_month: number }) =>
-    apiFetch<{ recurring: RecurringExpense }>("/recurring", { method: "POST", json }),
+  createRecurring: (json: {
+    amount_cents: number;
+    category_id: string;
+    currency?: string;
+    note?: string | null;
+    day_of_month: number;
+  }) => apiFetch<{ recurring: RecurringExpense }>("/recurring", { method: "POST", json }),
   updateRecurring: (
     id: string,
     json: {

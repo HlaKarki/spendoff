@@ -18,6 +18,9 @@ import {
   money,
   monthDays,
   relativeDayKey,
+  resolveCurrency,
+  toMajor,
+  toMinor,
 } from "../lib/format";
 import {
   useAnalytics,
@@ -123,12 +126,11 @@ function BattleDetail() {
         ))}
       </section>
 
-      {/* Your spend */}
+      {/* Your spend — personal, so it reads in YOUR base currency, not the battle's. */}
       <MySpend
         id={id}
         // oxlint-disable-next-line no-array-sort -- Array.from creates a fresh array, safe to sort in place
         months={Array.from(new Set([ym, ...(results.data?.map((r) => r.year_month) ?? [])])).sort()}
-        currency={b.currency}
       />
 
       {/* Win rule */}
@@ -153,7 +155,7 @@ function BattleDetail() {
           ))}
         </div>
         {detail.data.win_rule === "most_under_budget" && (
-          <BudgetEditor id={id} ym={ym} current={detail.data.my_budget_cents} />
+          <BudgetEditor id={id} ym={ym} current={detail.data.my_budget_cents} currency={detail.data.battle.currency} />
         )}
       </section>
 
@@ -212,7 +214,7 @@ function chipParts(key: string) {
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-function MySpend({ id, months, currency }: { id: string; months: string[]; currency: string }) {
+function MySpend({ id, months }: { id: string; months: string[] }) {
   const [sel, setSel] = useState(months[months.length - 1]);
   const idx = Math.max(0, months.indexOf(sel));
   const ym = months[idx];
@@ -242,12 +244,17 @@ function MySpend({ id, months, currency }: { id: string; months: string[]; curre
           </div>
         )}
       </div>
-      <MonthSpend key={ym} id={id} ym={ym} currency={currency} />
+      <MonthSpend key={ym} id={id} ym={ym} />
     </section>
   );
 }
 
-function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: string }) {
+/**
+ * The caller's own spend for the month — a personal drill-down, not the scoreboard. It's therefore
+ * denominated in the caller's base currency, not the battle's; the battle's currency belongs to the
+ * standings, where members are compared against one another.
+ */
+function MonthSpend({ id, ym }: { id: string; ym: string }) {
   const me = useMe();
   const tz = me.data?.timezone;
   const summary = useAnalytics({ year_month: ym, months: 1 });
@@ -265,12 +272,18 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
   const dayExpenses = useDayExpenses(selected, catFilter ?? undefined);
   // oxlint-disable-next-line no-array-sort -- .slice() already copies before sorting
   const dayItems = (dayExpenses.data ?? []).slice().sort((a, b) => b.spent_at.localeCompare(a.spent_at));
-  const dayTotal = dayItems.reduce((s, e) => s + e.amount_cents, 0);
+  // Sum the frozen base-currency amounts, not the raw ones: a day holding a $12 lunch and a €12
+  // dinner has a total, but it isn't 24 of anything.
+  const dayTotal = dayItems.reduce((s, e) => s + e.base_amount_cents, 0);
 
   // Month/category totals come from the cheap aggregate, not a full-month row download.
   const monthTotal = catFilter
     ? (summary.data?.by_category.find((c) => c.category_id === catFilter)?.total_cents ?? 0)
     : (summary.data?.month_total_cents ?? 0);
+
+  // These two are MY spend, not the battle's scoreboard — so they belong in my base currency. The
+  // battle's own currency applies to the standings, where members are compared against each other.
+  const myCurrency = resolveCurrency(summary.data?.base_currency ?? me.data?.base_currency);
 
   const stripRef = useRef<HTMLDivElement | null>(null);
   const selRef = useRef<HTMLButtonElement | null>(null);
@@ -313,7 +326,7 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
       {catFilter && (
         <p className="px-1 text-xs text-faint">
           {catFor(catFilter)?.label} in {formatMonthShort(ym)}:{" "}
-          <span className="font-semibold text-muted">{money(monthTotal, currency)}</span>
+          <span className="font-semibold text-muted">{money(monthTotal, myCurrency)}</span>
         </p>
       )}
 
@@ -352,7 +365,7 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
       {/* Selected day summary */}
       <div className="flex items-center justify-between px-1">
         <span className="text-sm font-semibold">{relativeDayKey(selected, tz)}</span>
-        <span className="text-sm font-bold tabular-nums">{money(dayTotal, currency)}</span>
+        <span className="text-sm font-bold tabular-nums">{money(dayTotal, myCurrency)}</span>
       </div>
 
       {/* Selected day entries */}
@@ -365,7 +378,7 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
       ) : (
         <div className="card divide-y divide-line">
           {dayItems.map((e) => (
-            <ExpenseRow key={e.id} battleId={id} expense={e} category={catFor(e.category_id)} currency={currency} />
+            <ExpenseRow key={e.id} battleId={id} expense={e} category={catFor(e.category_id)} />
           ))}
         </div>
       )}
@@ -373,22 +386,23 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
   );
 }
 
+// A row is rendered in the currency it was SPENT in — never the battle's. The two are only the same
+// by coincidence, and labelling a CA$100 dinner as "$100" would be a lie the user can't detect.
 function ExpenseRow({
   battleId,
   expense,
   category,
-  currency,
 }: {
   battleId: string;
   expense: Expense;
   category: Category | null;
-  currency: string;
 }) {
   const qc = useQueryClient();
   const categories = useCategories();
   const tz = useTimezone();
   const [editing, setEditing] = useState(false);
-  const [amount, setAmount] = useState(String(expense.amount_cents / 100));
+  const [amount, setAmount] = useState(String(toMajor(expense.amount_cents, expense.currency)));
+  const converted = expense.currency !== expense.base_currency;
   const [categoryId, setCategoryId] = useState(expense.category_id);
   const [note, setNote] = useState(expense.note ?? "");
   // Derived rather than seeded into state: `tz` is undefined on the first render, so freezing the
@@ -407,7 +421,9 @@ function ExpenseRow({
   const save = useMutation({
     mutationFn: () =>
       api.updateExpense(expense.id, {
-        amount_cents: Math.round(Number(amount || 0) * 100),
+        // Parsed in the expense's own currency — a "1000" typed against a ¥ expense is ¥1000, and
+        // scaling it by a hard-coded 100 would book a hundredfold error.
+        amount_cents: toMinor(Number(amount || 0), expense.currency),
         category_id: categoryId,
         note: note.trim() || null,
         // The field holds a wall-clock time in the account's zone, not the device's — convert with
@@ -437,8 +453,16 @@ function ExpenseRow({
           {expense.note && <div className="truncate text-xs text-faint">{expense.note}</div>}
         </div>
         <div className="text-right">
-          <div className="font-semibold tabular-nums">{money(expense.amount_cents, currency)}</div>
-          <div className="text-xs text-faint">{formatTime(expense.spent_at, tz)}</div>
+          <div className="font-semibold tabular-nums">{money(expense.amount_cents, expense.currency)}</div>
+          {converted ? (
+            // What it actually counted as. The rate behind it is one tap away, in the edit view —
+            // no room for it here, and a title= tooltip is invisible on a phone.
+            <div className="text-xs text-faint">
+              {money(expense.base_amount_cents, expense.base_currency)} · {formatTime(expense.spent_at, tz)}
+            </div>
+          ) : (
+            <div className="text-xs text-faint">{formatTime(expense.spent_at, tz)}</div>
+          )}
         </div>
       </button>
     );
@@ -454,7 +478,17 @@ function ExpenseRow({
         value={amount}
         onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
         placeholder="0.00"
+        aria-label={`Amount in ${expense.currency}`}
       />
+      {converted && (
+        // The whole point of freezing the rate onto the row: this line can state exactly what the
+        // number was converted at, and when — and it will still say the same thing next year.
+        <p className="text-xs text-faint">
+          Counted as {money(expense.base_amount_cents, expense.base_currency)} — 1 {expense.currency} ={" "}
+          {expense.rate_to_base.toFixed(4)} {expense.base_currency}
+          {expense.rate_date ? ` on ${expense.rate_date}` : ""}
+        </p>
+      )}
       <div className="grid grid-cols-5 gap-2">
         {categories.data?.map((c) => {
           const active = categoryId === c.id;
@@ -522,11 +556,26 @@ function WinnerChip({
   return <span className="text-xs font-semibold text-accent">{w ? `${w.displayName} 🏆` : "—"}</span>;
 }
 
-function BudgetEditor({ id, ym, current }: { id: string; ym: string; current: number | null }) {
+/**
+ * A budget is denominated in the BATTLE's currency — it's only ever compared against a standings
+ * total, which is already converted into that currency. So it needs no conversion of its own, and
+ * `currency` here is the battle's, not the member's.
+ */
+function BudgetEditor({
+  id,
+  ym,
+  current,
+  currency,
+}: {
+  id: string;
+  ym: string;
+  current: number | null;
+  currency: string;
+}) {
   const qc = useQueryClient();
-  const [val, setVal] = useState(current !== null ? String(Math.round(current / 100)) : "");
+  const [val, setVal] = useState(current !== null ? String(Math.round(toMajor(current, currency))) : "");
   const save = useMutation({
-    mutationFn: () => api.setBudget(id, ym, { budget_cents: Math.round(Number(val || 0) * 100) }),
+    mutationFn: () => api.setBudget(id, ym, { budget_cents: toMinor(Number(val || 0), currency) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["battle", id] });
       qc.invalidateQueries({ queryKey: ["standings", id] });
@@ -541,9 +590,10 @@ function BudgetEditor({ id, ym, current }: { id: string; ym: string; current: nu
         value={val}
         onChange={(e) => setVal(e.target.value.replace(/[^0-9]/g, ""))}
         placeholder="1500"
+        aria-label={`Monthly budget in ${currency}`}
       />
       <button onClick={() => save.mutate()} disabled={save.isPending} className="btn-primary px-4 py-2 text-sm">
-        {current !== null ? money(current) : "Set"}
+        {current !== null ? money(current, currency) : "Set"}
       </button>
     </div>
   );

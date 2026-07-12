@@ -23,6 +23,14 @@ test("sign up, log an expense, see it confirmed", async ({ page }) => {
   // Landing anywhere that isn't /onboard means the session took.
   await expect(page).not.toHaveURL(/\/onboard/, { timeout: 15_000 });
 
+  // That redirect is client-side — it fires as soon as the verify response resolves, which can be
+  // a moment before the browser has committed the Set-Cookie. The next line is a full navigation,
+  // so it would send no session and bounce straight back to /onboard. Wait for the cookie itself
+  // rather than for a duration: it's the actual thing being raced.
+  await expect
+    .poll(async () => (await page.context().cookies()).some((c) => c.name === "so_session"), { timeout: 10_000 })
+    .toBe(true);
+
   // ── Log an expense ────────────────────────────────────────────────────────
   await page.goto("/log");
   await expect(page.getByRole("heading", { name: "Log a spend" })).toBeVisible();

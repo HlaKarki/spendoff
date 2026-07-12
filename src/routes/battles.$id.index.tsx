@@ -16,6 +16,7 @@ import {
   formatMonthShort,
   formatTime,
   money,
+  monthDays,
   relativeDayKey,
 } from "../lib/format";
 import {
@@ -201,14 +202,6 @@ function BattleDetail() {
   );
 }
 
-// Days of the battle month, oldest→newest, not past today for the current month.
-function monthDays(ym: string, tz?: string): string[] {
-  const [y, m] = ym.split("-").map(Number);
-  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const cap = ym === currentYearMonth(tz) ? currentDayOfMonth(tz) : last;
-  return Array.from({ length: cap }, (_, i) => `${ym}-${String(i + 1).padStart(2, "0")}`);
-}
-
 function chipParts(key: string) {
   const [y, m, d] = key.split("-").map(Number);
   // The weekday of a calendar date is a property of the date, not of any zone — build and read it
@@ -262,8 +255,8 @@ function MonthSpend({ id, ym, currency }: { id: string; ym: string; currency: st
   const catFor = (categoryId: string) => categories.data?.find((c) => c.id === categoryId) ?? null;
   const [catFilter, setCatFilter] = useState<string | null>(null);
 
-  const days = useMemo(() => monthDays(ym, tz), [ym, tz]);
   const daysWithSpend = useMemo(() => new Set(summary.data?.daily.map((d) => d.date) ?? []), [summary.data]);
+  const days = useMemo(() => monthDays(ym, tz, daysWithSpend), [ym, tz, daysWithSpend]);
 
   const todayKey = `${currentYearMonth(tz)}-${pad2(currentDayOfMonth(tz))}`;
   const [selected, setSelected] = useState(days.includes(todayKey) ? todayKey : days[days.length - 1]);

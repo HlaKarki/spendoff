@@ -71,6 +71,64 @@ export function currentDayOfMonth(timezone?: string): number {
   return Number(new Intl.DateTimeFormat("en-CA", { timeZone: tz, day: "2-digit" }).format(new Date()));
 }
 
+/** Today's calendar day ("YYYY-MM-DD") in the given timezone. */
+export function todayInTz(timezone?: string): string {
+  return dayInTz(new Date().toISOString(), timezone);
+}
+
+/** Shift a plain calendar day by whole days. Parsed as UTC, so a DST day is still one day long. */
+export function shiftDay(day: string, delta: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The days an expense may be logged into: the current month in the account's zone, start to end.
+ *
+ * Earlier months are out because the backend locks a month once it rolls over — editing or deleting
+ * a row there answers 409 `month_closed`, and a closed month's result is already settled. Logging
+ * into one would plant a row the user can't take back, and could rewrite a decided winner.
+ *
+ * Later months are out because standings, budgets and the month close are all per-month: spend
+ * booked into a month that hasn't started would sit invisible until it did. Within *this* month,
+ * though, a future day is allowed — it counts toward the month you're already competing in.
+ */
+export function loggableDayRange(timezone?: string): { min: string; max: string } {
+  const ym = currentYearMonth(timezone);
+  const [y, m] = ym.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { min: `${ym}-01`, max: `${ym}-${String(last).padStart(2, "0")}` };
+}
+
+/**
+ * The days of `yearMonth`, oldest→newest, for the day strip. The current month stops at today —
+ * except where spend is already booked ahead (`daysWithSpend`), which the log screen allows within
+ * the month: a day with no chip is a day whose entries can't be opened or edited.
+ */
+export function monthDays(yearMonth: string, timezone: string | undefined, daysWithSpend: Set<string>): string[] {
+  const [y, m] = yearMonth.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  let cap = last;
+  if (yearMonth === currentYearMonth(timezone)) {
+    const logged = [...daysWithSpend].filter((d) => d.startsWith(`${yearMonth}-`)).map((d) => Number(d.slice(8, 10)));
+    cap = Math.min(last, Math.max(currentDayOfMonth(timezone), ...logged));
+  }
+  return Array.from({ length: cap }, (_, i) => `${yearMonth}-${String(i + 1).padStart(2, "0")}`);
+}
+
+/**
+ * The instant to stamp on an expense logged for `day`.
+ *
+ * Today keeps the real clock time. Any other day has no known time, so it lands at noon in the
+ * account's zone — the same convention the backend's recurring materializer uses, and far enough
+ * from either boundary that no DST shift can drag it onto a neighbouring day.
+ */
+export function spentAtForDay(day: string, timezone?: string): string {
+  const now = new Date().toISOString();
+  return day === dayInTz(now, timezone) ? now : datetimeLocalToUtc(`${day}T12:00`, timezone);
+}
+
 /** Calendar day ("YYYY-MM-DD") that an instant falls on in `timezone`. Mirrors the backend's dayInTz. */
 export function dayInTz(iso: string, timezone?: string): string {
   return new Intl.DateTimeFormat("en-CA", {

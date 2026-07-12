@@ -1,13 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { Delete, Check, Repeat } from "lucide-react";
-import { useState } from "react";
+import { Delete, Check, Repeat, CalendarDays } from "lucide-react";
+import { useRef, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { api } from "../lib/api";
-import { currentDayOfMonth, money } from "../lib/format";
+import { loggableDayRange, money, relativeDayKey, shiftDay, spentAtForDay, todayInTz } from "../lib/format";
 import { logExpense } from "../lib/outbox";
 import { useCategories, useMe } from "../lib/queries";
 import { cn } from "../lib/utils";
@@ -34,6 +34,7 @@ function LogScreen() {
   const categories = useCategories();
   const me = useMe();
   const qc = useQueryClient();
+  const tz = me.data?.timezone;
   const [cents, setCents] = useState(0);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -41,7 +42,33 @@ function LogScreen() {
   const [repeat, setRepeat] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; offline: boolean } | null>(null);
-  const today = currentDayOfMonth(me.data?.timezone);
+
+  // Derived, not seeded into state: `tz` is undefined until `useMe` resolves, so an initial value
+  // would pin the default day to the device's zone even after the account's arrives.
+  const [dayEdit, setDayEdit] = useState<string | null>(null);
+  const today = todayInTz(tz);
+  const day = dayEdit ?? today;
+  const range = loggableDayRange(tz);
+  const dom = Number(day.slice(8, 10));
+  const todayDom = Number(today.slice(8, 10));
+
+  // One tap for the two days people actually backfill. Yesterday drops off on the 1st, when it
+  // belongs to a month that's already locked.
+  const yesterday = shiftDay(today, -1);
+  const quickDays = yesterday >= range.min ? [today, yesterday] : [today];
+  const isCustomDay = !quickDays.includes(day);
+
+  const dayInput = useRef<HTMLInputElement>(null);
+
+  function openDayPicker() {
+    const el = dayInput.current;
+    if (!el) return;
+    // showPicker() is the only way in: a date field opens its calendar from the indicator icon, which
+    // the chip covers. Older browsers without it fall back to focusing the field, where the arrow
+    // keys still change the date.
+    if (typeof el.showPicker === "function") el.showPicker();
+    else el.focus();
+  }
 
   function press(k: (typeof KEYS)[number]) {
     if (k === "del") return setCents((c) => Math.floor(c / 10));
@@ -57,12 +84,13 @@ function LogScreen() {
     try {
       let offline = false;
       if (repeat) {
-        // Creating the rule also materializes this month's entry server-side (one entry, no dupe).
+        // Creating the rule also materializes this month's entry server-side (one entry, no dupe) —
+        // but only once the chosen day has arrived. Pick a day still ahead and the rule simply waits.
         await api.createRecurring({
           amount_cents: cents,
           category_id: categoryId,
           note: note.trim() || null,
-          day_of_month: today,
+          day_of_month: dom,
         });
       } else {
         const res = await logExpense({
@@ -70,16 +98,18 @@ function LogScreen() {
           amount_cents: cents,
           category_id: categoryId,
           note: note.trim() || null,
-          spent_at: new Date().toISOString(),
+          // Not `now` — the entry belongs to the day the user picked, read in their zone.
+          spent_at: spentAtForDay(day, tz),
         });
         offline = !res.online;
       }
       await qc.invalidateQueries();
-      setToast({ msg: repeat ? `Logged ${money(cents)} · repeats monthly` : `Logged ${money(cents)}`, offline });
+      setToast({ msg: savedMessage(), offline });
       setCents(0);
       setNote("");
       setShowNote(false);
       setRepeat(false);
+      setDayEdit(null);
       setTimeout(() => setToast(null), 2200);
     } catch {
       setToast({ msg: "Couldn't save — try again", offline: false });
@@ -89,11 +119,73 @@ function LogScreen() {
     }
   }
 
+  function savedMessage(): string {
+    if (repeat) {
+      // Nothing is logged yet when the day is still ahead — say so rather than claim a spend landed.
+      return dom > todayDom
+        ? `Repeats monthly · starts the ${ordinal(dom)}`
+        : `Logged ${money(cents)} · repeats monthly`;
+    }
+    return day === today ? `Logged ${money(cents)}` : `Logged ${money(cents)} · ${relativeDayKey(day, tz)}`;
+  }
+
   return (
     <div className="flex min-h-[calc(100dvh-7rem)] flex-col">
       <header className="pb-3 pt-2">
         <h1 className="font-display text-2xl font-bold tracking-tight">Log a spend</h1>
       </header>
+
+      {/* Day — today unless you say otherwise */}
+      <div className="flex items-center gap-1.5">
+        {quickDays.map((k) => (
+          <button
+            key={k}
+            onClick={() => setDayEdit(k)}
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+              day === k ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+            )}
+          >
+            {relativeDayKey(k, tz)}
+          </button>
+        ))}
+        <label
+          // preventDefault stops the label from *also* activating the input: browsers that open the
+          // picker on label activation would otherwise open it twice in one gesture.
+          onClick={(e) => {
+            e.preventDefault();
+            openDayPicker();
+          }}
+          className={cn(
+            "relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-within:ring-2 focus-within:ring-accent/40",
+            isCustomDay ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+          )}
+        >
+          <CalendarDays className="size-3.5" />
+          {isCustomDay ? relativeDayKey(day, tz) : "Another day"}
+          {/* The native picker owns the calendar UI and the min/max clamp. It has to stay rendered
+              (opacity, not `hidden`) for showPicker() to be allowed to open it, but it takes no
+              clicks of its own: clicking a date field's text doesn't open anything, and the one part
+              that would — the indicator icon — is invisible under the chip. The label opens it. */}
+          <input
+            ref={dayInput}
+            type="date"
+            aria-label="Day this was spent"
+            value={day}
+            min={range.min}
+            max={range.max}
+            onChange={(e) => e.target.value && setDayEdit(e.target.value)}
+            className="pointer-events-none absolute inset-0 opacity-0"
+          />
+        </label>
+      </div>
+      <p className="mt-1.5 min-h-4 text-xs text-faint">
+        {day > today
+          ? "Counts toward this month's total right away"
+          : isCustomDay
+            ? "Backdated — this month only, once a month closes it's locked"
+            : ""}
+      </p>
 
       {/* Amount */}
       <div className="flex flex-1 flex-col items-center justify-center py-2">
@@ -162,7 +254,7 @@ function LogScreen() {
           <Repeat className={cn("size-4", repeat ? "text-accent" : "text-faint")} />
           <span className="text-left">
             <span className={cn("block text-sm font-medium", repeat ? "text-fg" : "text-muted")}>Repeat monthly</span>
-            {repeat && <span className="block text-xs text-faint">Auto-logs on the {ordinal(today)} each month</span>}
+            {repeat && <span className="block text-xs text-faint">Auto-logs on the {ordinal(dom)} each month</span>}
           </span>
         </span>
         <span className={cn("h-6 w-11 shrink-0 rounded-full p-0.5 transition", repeat ? "bg-accent" : "bg-surface-2")}>

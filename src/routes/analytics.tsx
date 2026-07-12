@@ -4,6 +4,10 @@ import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
+import { EmptyState } from "../components/ui/empty-state";
+import { RuleLine } from "../components/ui/rule-line";
+import { Tape } from "../components/ui/tape";
+import { TapeLabel } from "../components/ui/tape-label";
 import { currentYearMonth, formatMonth, money, resolveCurrency } from "../lib/format";
 import { useAnalytics, useMe } from "../lib/queries";
 import type { Analytics } from "../lib/types";
@@ -43,49 +47,52 @@ function AnalyticsScreen() {
   const analytics = useAnalytics({ year_month: ym, months: WINDOW });
 
   return (
-    <div className="space-y-6">
-      <header className="pt-2">
-        <h1 className="font-display text-2xl font-bold tracking-tight">Stats</h1>
-        <p className="text-sm text-muted">Your spending across every battle.</p>
+    <div className="space-y-5">
+      <header className="flex items-baseline justify-between px-1 pt-2">
+        <h1 className="font-mono text-base font-bold uppercase tracking-wide">Stats</h1>
+        <span className="font-mono text-xs text-muted">every battle</span>
       </header>
 
       {/* Month total + pager */}
-      <div className="card px-5 py-5">
+      <Tape className="pt-5">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => setSelected(shiftMonth(ym, -1))}
-            className="flex size-8 items-center justify-center rounded-full text-faint transition hover:bg-surface active:scale-95"
+            className="flex size-8 items-center justify-center rounded-full text-faint transition hover:bg-paper-2 active:scale-95"
             aria-label="Previous month"
           >
             <ChevronLeft className="size-5" />
           </button>
-          <span className="font-display text-lg font-bold tracking-tight">{formatMonth(ym)}</span>
+          <span className="font-mono text-sm font-bold uppercase tracking-[0.14em]">{formatMonth(ym)}</span>
           <button
             type="button"
             onClick={() => setSelected(shiftMonth(ym, 1))}
             disabled={ym >= currentYm}
-            className="flex size-8 items-center justify-center rounded-full text-faint transition hover:bg-surface active:scale-95 disabled:opacity-30"
+            className="flex size-8 items-center justify-center rounded-full text-faint transition hover:bg-paper-2 active:scale-95 disabled:opacity-30"
             aria-label="Next month"
           >
             <ChevronRight className="size-5" />
           </button>
         </div>
 
-        <div className="mt-4 text-center">
+        <div className="mt-3 text-center">
+          <TapeLabel>Month so far</TapeLabel>
           {analytics.isLoading ? (
-            <div className="mx-auto h-9 w-32 animate-pulse rounded-lg bg-surface" />
+            <div className="mx-auto mt-1 h-9 w-32 animate-pulse rounded-lg bg-paper-2" />
           ) : (
-            <p className="font-display text-4xl font-black tabular-nums">
+            <p className="mt-1 font-mono text-4xl font-bold tabular-nums">
               {money(analytics.data?.month_total_cents ?? 0, resolveCurrency(analytics.data?.base_currency))}
             </p>
           )}
           <MonthDelta data={analytics.data} ym={ym} />
         </div>
-      </div>
+      </Tape>
 
       {analytics.isError ? (
-        <p className="card px-4 py-3 text-sm text-muted">Couldn't load your stats. Try again.</p>
+        <Tape className="pt-5">
+          <EmptyState title="Couldn't load your stats.">Try again in a moment.</EmptyState>
+        </Tape>
       ) : (
         <>
           <MonthlyTrend
@@ -111,7 +118,7 @@ function MonthDelta({ data, ym }: { data?: Analytics; ym: string }) {
   const up = cur >= prev.total_cents;
   return (
     <p className="mt-1 text-sm text-faint">
-      <span className={cn("font-semibold", up ? "text-rose-400" : "text-emerald-400")}>
+      <span className={cn("font-mono font-semibold", up ? "text-stamp" : "text-accent")}>
         {up ? "↑" : "↓"} {Math.abs(Math.round(delta * 100))}%
       </span>{" "}
       vs {monthAbbr(prev.year_month)}
@@ -132,7 +139,7 @@ function MonthlyTrend({
   currentYm: string;
   onSelect: (ym: string) => void;
 }) {
-  if (loading) return <div className="h-44 animate-pulse rounded-2xl bg-surface" />;
+  if (loading) return <div className="h-44 animate-pulse rounded-2xl bg-paper-2" />;
   if (!data || data.monthly.length === 0) return null;
 
   const monthly = data.monthly;
@@ -141,64 +148,62 @@ function MonthlyTrend({
   const currency = resolveCurrency(data.base_currency);
 
   return (
-    <section className="space-y-2">
-      <h2 className="label">Last {monthly.length} months</h2>
-      <div className="card px-4 py-4">
-        <div className="flex h-32 items-end gap-2">
-          {monthly.map((m) => {
-            const h = (m.total_cents / max) * 100;
-            const isSel = m.year_month === selected;
-            const future = m.year_month > currentYm;
-            return (
-              <button
-                type="button"
-                key={m.year_month}
-                disabled={future}
-                onClick={() => onSelect(m.year_month)}
-                className="group flex h-full flex-1 items-end disabled:cursor-default"
-                aria-label={`${formatMonth(m.year_month)}: ${money(m.total_cents, currency)}`}
-              >
-                <div
-                  className="w-full rounded-t-md transition-all"
-                  style={{
-                    height: `${Math.max(3, h)}%`,
-                    backgroundColor: isSel ? "var(--color-accent)" : "var(--color-muted)",
-                    opacity: isSel ? 1 : 0.4,
-                  }}
-                />
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-2 flex gap-2">
-          {monthly.map((m) => (
-            <div
+    <Tape className="pt-5">
+      <TapeLabel>Last {monthly.length} months</TapeLabel>
+      <div className="mt-3 flex h-32 items-end gap-2">
+        {monthly.map((m) => {
+          const h = (m.total_cents / max) * 100;
+          const isSel = m.year_month === selected;
+          const future = m.year_month > currentYm;
+          return (
+            <button
+              type="button"
               key={m.year_month}
-              className={cn(
-                "flex-1 text-center text-[10px] font-semibold",
-                m.year_month === selected ? "text-accent" : "text-faint",
-              )}
+              disabled={future}
+              onClick={() => onSelect(m.year_month)}
+              className="group flex h-full flex-1 items-end disabled:cursor-default"
+              aria-label={`${formatMonth(m.year_month)}: ${money(m.total_cents, currency)}`}
             >
-              {monthAbbr(m.year_month)}
-            </div>
-          ))}
-        </div>
+              <div
+                className="w-full rounded-t transition-all"
+                style={{
+                  height: `${Math.max(3, h)}%`,
+                  backgroundColor: isSel ? "var(--color-accent)" : "var(--color-muted)",
+                  opacity: isSel ? 1 : 0.4,
+                }}
+              />
+            </button>
+          );
+        })}
       </div>
-    </section>
+      <div className="mt-2 flex gap-2">
+        {monthly.map((m) => (
+          <div
+            key={m.year_month}
+            className={cn(
+              "flex-1 text-center font-mono text-[10px] font-semibold uppercase",
+              m.year_month === selected ? "text-accent" : "text-faint",
+            )}
+          >
+            {monthAbbr(m.year_month)}
+          </div>
+        ))}
+      </div>
+    </Tape>
   );
 }
 
 function CategoryBreakdown({ data, loading, ym }: { data?: Analytics; loading: boolean; ym: string }) {
-  if (loading) return <div className="h-40 animate-pulse rounded-2xl bg-surface" />;
+  if (loading) return <div className="h-40 animate-pulse rounded-2xl bg-paper-2" />;
   if (!data) return null;
 
   const cats = data.by_category;
   if (cats.length === 0) {
     return (
-      <section className="space-y-2">
-        <h2 className="label">By category</h2>
-        <p className="card px-4 py-3 text-sm text-muted">Nothing logged in {formatMonth(ym)}.</p>
-      </section>
+      <Tape className="pt-5">
+        <TapeLabel>By category</TapeLabel>
+        <EmptyState title={`Nothing logged in ${formatMonth(ym)}.`}>A blank slip is the best kind.</EmptyState>
+      </Tape>
     );
   }
 
@@ -207,8 +212,9 @@ function CategoryBreakdown({ data, loading, ym }: { data?: Analytics; loading: b
   const total = data.month_total_cents;
 
   return (
-    <section className="space-y-3">
-      <h2 className="label">By category</h2>
+    <Tape className="pt-5">
+      <TapeLabel>By category</TapeLabel>
+      <RuleLine />
       <div className="space-y-3.5">
         {cats.map((c) => {
           const pct = total ? Math.round((c.total_cents / total) * 100) : 0;
@@ -219,12 +225,12 @@ function CategoryBreakdown({ data, loading, ym }: { data?: Analytics; loading: b
                   <CategoryIcon name={c.icon} className="size-4 text-faint" />
                   <span className="font-medium">{c.label}</span>
                 </span>
-                <span className="tabular-nums">
+                <span className="font-mono tabular-nums">
                   <span className="font-semibold">{money(c.total_cents, currency)}</span>
                   <span className="ml-1.5 text-xs text-faint">{pct}%</span>
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-surface">
+              <div className="h-2 overflow-hidden rounded-full bg-paper-2">
                 <div
                   className="h-full rounded-full bg-accent"
                   style={{ width: `${Math.max(2, (c.total_cents / max) * 100)}%` }}
@@ -234,6 +240,6 @@ function CategoryBreakdown({ data, loading, ym }: { data?: Analytics; loading: b
           );
         })}
       </div>
-    </section>
+    </Tape>
   );
 }

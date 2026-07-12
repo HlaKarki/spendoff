@@ -1,28 +1,116 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,900&family=Manrope:wght@400;500;600;700;800&display=swap");
+/* Self-hosted (offline PWA) — never load fonts from a CDN. */
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/ibm-plex-mono/700.css";
 @import "tailwindcss";
 
-@theme {
-  --color-bg: #0a0a0b;
-  --color-surface: #141416;
-  --color-surface-2: #1c1c20;
-  --color-line: #2a2a2f;
-  --color-fg: #fafafa;
-  --color-muted: #a1a1aa;
-  --color-faint: #71717a;
-  --color-accent: #ccff33;
-  --color-accent-fg: #0a0a0b;
-  --color-gold: #ffd34e;
-  --color-danger: #ff5d5d;
-  --color-win: #ccff33;
+/* ── Receipt palette (HLA-92) ──────────────────────────────────────────────
+ * Semantic paper-world names. Light is the source of truth; dark is the
+ * "carbon copy". Device preference is the default; an explicit user override
+ * sets data-theme on <html> (see lib/theme.ts) and must win in BOTH
+ * directions, hence the :not() guard on the media query.
+ * `--faint` is for skippable meta only — text you must read to act sits at
+ * `--muted` or darker (contrast-checked ≥ 4.5:1 on paper/bg).
+ * ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --t-bg: #efece3;
+  --t-paper: #fdfcf7;
+  --t-paper-2: #f5f3ea;
+  --t-line: #ddd8c8;
+  --t-rule: #cfc9b6;
+  --t-ink: #26241c;
+  --t-muted: #64604f;
+  --t-faint: #8d8971;
+  --t-accent: #3452c4;
+  --t-accent-ink: #fdfcf7;
+  --t-stamp: #c23b2e;
+  --t-gold: #8a6510;
+  --shadow-paper: 0 1px 3px rgb(38 36 28 / 0.08), 0 6px 20px rgb(38 36 28 / 0.06);
+}
 
-  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: "Fraunces", Georgia, serif;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --t-bg: #211f1a;
+    --t-paper: #2b2922;
+    --t-paper-2: #34322a;
+    --t-line: #403d32;
+    --t-rule: #4a4739;
+    --t-ink: #ebe7d8;
+    --t-muted: #aca890;
+    --t-faint: #7c7967;
+    --t-accent: #8fa3ff;
+    --t-accent-ink: #1a2033;
+    --t-stamp: #e0685b;
+    --t-gold: #d5a83c;
+    --shadow-paper: 0 1px 3px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+  }
+}
+
+:root[data-theme="dark"] {
+  --t-bg: #211f1a;
+  --t-paper: #2b2922;
+  --t-paper-2: #34322a;
+  --t-line: #403d32;
+  --t-rule: #4a4739;
+  --t-ink: #ebe7d8;
+  --t-muted: #aca890;
+  --t-faint: #7c7967;
+  --t-accent: #8fa3ff;
+  --t-accent-ink: #1a2033;
+  --t-stamp: #e0685b;
+  --t-gold: #d5a83c;
+  --shadow-paper: 0 1px 3px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+}
+
+@theme inline {
+  --color-bg: var(--t-bg);
+  --color-paper: var(--t-paper);
+  --color-paper-2: var(--t-paper-2);
+  --color-line: var(--t-line);
+  --color-rule: var(--t-rule);
+  --color-ink: var(--t-ink);
+  --color-muted: var(--t-muted);
+  --color-faint: var(--t-faint);
+  --color-accent: var(--t-accent);
+  --color-accent-ink: var(--t-accent-ink);
+  --color-stamp: var(--t-stamp);
+  --color-gold: var(--t-gold);
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --shadow-paper: var(--shadow-paper);
+
+  /* LEGACY ALIASES — old token names still referenced by unmigrated screens.
+   * Deleted in the redesign cleanup (HLA-152); do not use in new code. */
+  --color-surface: var(--t-paper);
+  --color-surface-2: var(--t-paper-2);
+  --color-fg: var(--t-ink);
+  --color-accent-fg: var(--t-accent-ink);
+  --color-danger: var(--t-stamp);
+  --color-win: var(--t-accent);
+  --font-display: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html {
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 html,
 body {
-  background: var(--color-bg);
-  color: var(--color-fg);
+  background: var(--t-bg);
+  color: var(--t-ink);
 }
 
 body {
@@ -36,24 +124,103 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Keyboard focus must be visible everywhere (tap highlight is suppressed above). */
+:focus-visible {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Receipt surfaces & moments ────────────────────────────────────────────
+ * The perforation mask and the two sanctioned animations live here, used only
+ * through the ui/ components (Tape, Stamp) and the Today print moment.
+ * ────────────────────────────────────────────────────────────────────────── */
+@layer components {
+  .tape {
+    background: var(--t-paper);
+    box-shadow: var(--shadow-paper);
+    -webkit-mask:
+      radial-gradient(circle at 8px 0, transparent 6px, #000 6.5px) 50% 0 / 16px 12px repeat-x,
+      linear-gradient(#000, #000) 50% 50% / 100% calc(100% - 22px) no-repeat,
+      radial-gradient(circle at 8px 12px, transparent 6px, #000 6.5px) 50% 100% / 16px 12px repeat-x;
+    mask:
+      radial-gradient(circle at 8px 0, transparent 6px, #000 6.5px) 50% 0 / 16px 12px repeat-x,
+      linear-gradient(#000, #000) 50% 50% / 100% calc(100% - 22px) no-repeat,
+      radial-gradient(circle at 8px 12px, transparent 6px, #000 6.5px) 50% 100% / 16px 12px repeat-x;
+  }
+
+  /* Print moment: a freshly logged expense feeds onto the tape. */
+  .print-wrap {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    transition: grid-template-rows 260ms cubic-bezier(0.25, 0.9, 0.3, 1);
+  }
+  .print-wrap > * {
+    min-height: 0;
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+      transform 260ms cubic-bezier(0.25, 0.9, 0.3, 1),
+      opacity 200ms ease-out;
+  }
+  .print-wrap.printing {
+    grid-template-rows: 0fr;
+  }
+  .print-wrap.printing > * {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+
+  /* Stamp moment: the verdict thunks down when a month settles. */
+  .stamp-thunk {
+    animation: stamp-thunk 240ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  @keyframes stamp-thunk {
+    0% {
+      transform: rotate(-16deg) scale(2);
+      opacity: 0;
+    }
+    55% {
+      transform: rotate(-6deg) scale(0.93);
+      opacity: 0.9;
+    }
+    100% {
+      transform: rotate(-7deg) scale(1);
+      opacity: 0.85;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .print-wrap,
+    .print-wrap > *,
+    .stamp-thunk {
+      transition: none;
+      animation: none;
+    }
+  }
+}
+
+/* LEGACY component classes — consumed by unmigrated screens only.
+ * Absorbed into src/components/ui/ and deleted in HLA-152. */
 @layer components {
   .card {
-    @apply rounded-2xl border border-line bg-surface;
+    @apply rounded-2xl border border-line bg-paper;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent font-semibold text-accent-fg transition hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent font-semibold text-accent-ink transition hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-surface-2 font-semibold text-fg transition hover:bg-line active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-paper-2 font-semibold text-ink transition hover:bg-line active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line font-semibold text-fg transition hover:bg-surface-2 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line font-semibold text-ink transition hover:bg-paper-2 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }
   .input {
-    @apply w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-fg outline-none placeholder:text-faint focus:border-accent/60;
+    @apply w-full rounded-xl border border-line bg-paper-2 px-4 py-3 text-ink outline-none placeholder:text-faint focus:border-accent/60;
   }
   .label {
-    @apply text-xs font-semibold uppercase tracking-wide text-faint;
+    @apply font-mono text-xs font-semibold uppercase tracking-wide text-faint;
   }
 }
 

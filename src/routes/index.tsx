@@ -376,7 +376,9 @@ function TodayScreen() {
               <span className={cn("block text-sm font-medium", repeat ? "text-ink" : "text-muted")}>
                 Repeat monthly
               </span>
-              {repeat && <span className="block text-xs text-faint">Auto-logs on the {ordinal(dom)} each month</span>}
+              {/* Always rendered: it explains the toggle before it's flipped, and a conditional
+                  line here grows the row and shoves the Log button down mid-reach. */}
+              <span className="block text-xs text-faint">Auto-logs on the {ordinal(dom)} each month</span>
             </span>
           </span>
           <Switch checked={repeat} onChange={(e) => setRepeat(e.target.checked)} aria-label="Repeat monthly" />

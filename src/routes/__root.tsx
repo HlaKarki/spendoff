@@ -27,9 +27,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { title: SITE_TITLE },
       { name: "description", content: SITE_DESC },
       { name: "robots", content: "index, follow" },
-      { name: "theme-color", content: "#0a0a0b" },
+      { name: "theme-color", media: "(prefers-color-scheme: light)", content: "#efece3" },
+      { name: "theme-color", media: "(prefers-color-scheme: dark)", content: "#211f1a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "Spendoff" },
       // Open Graph
       { property: "og:type", content: "website" },
@@ -61,6 +62,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   shellComponent: RootDocument,
 });
 
+/* Applies the per-device theme override before first paint so a PWA cold start
+ * never flashes the wrong theme. Must stay in sync with lib/theme.ts. */
+const THEME_INIT = `(function(){try{var t=localStorage.getItem("spendoff-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}})()`;
+
 const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -76,6 +81,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
         <HeadContent />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       </head>

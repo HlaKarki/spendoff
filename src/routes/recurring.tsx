@@ -5,6 +5,12 @@ import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
+import { Button } from "../components/ui/button";
+import { EmptyState } from "../components/ui/empty-state";
+import { Input } from "../components/ui/input";
+import { SwitchIndicator } from "../components/ui/switch";
+import { Tape } from "../components/ui/tape";
+import { TapeLabel } from "../components/ui/tape-label";
 import { api } from "../lib/api";
 import { money, resolveCurrency, toMajor, toMinor } from "../lib/format";
 import { useBaseCurrency, useCategories, useCurrencies, useRecurring } from "../lib/queries";
@@ -32,33 +38,33 @@ function RecurringScreen() {
 
   return (
     <div className="space-y-5">
-      <header className="flex items-center gap-3 pt-2">
-        <Link to="/settings" className="text-faint">
+      <header className="flex items-baseline gap-3 px-1 pt-2">
+        <Link to="/settings" className="self-center text-faint" aria-label="Back to settings">
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Recurring</h1>
+        <h1 className="font-mono text-base font-bold uppercase tracking-wide">Recurring</h1>
       </header>
 
-      <p className="text-sm text-muted">
+      <p className="px-1 text-sm text-muted">
         Fixed monthly costs — rent, subscriptions — auto-log on the day you pick, in every battle you're in that month.
       </p>
 
       <AddRecurring />
 
-      <section className="space-y-2">
-        <h2 className="label">Your recurring</h2>
+      <Tape className="pt-5">
+        <TapeLabel>Your recurring</TapeLabel>
         {rules.isLoading ? (
-          <div className="h-20 animate-pulse rounded-xl bg-surface" />
+          <div className="mt-2 h-20 animate-pulse rounded-lg bg-paper-2" />
         ) : !rules.data || rules.data.length === 0 ? (
-          <p className="card px-4 py-3 text-sm text-muted">Nothing recurring yet.</p>
+          <EmptyState title="Nothing recurring yet.">Rent and subscriptions log themselves from here.</EmptyState>
         ) : (
-          <div className="card divide-y divide-line">
+          <div className="mt-1 divide-y divide-dashed divide-rule">
             {rules.data.map((r) => (
               <RecurringRow key={r.id} rule={r} />
             ))}
           </div>
         )}
-      </section>
+      </Tape>
     </div>
   );
 }
@@ -101,11 +107,11 @@ function AddRecurring() {
   const canAdd = Number(amount) > 0 && !!categoryId && Number(day) >= 1 && !create.isPending;
 
   return (
-    <section className="card space-y-3 px-4 py-4">
-      <h2 className="label">Add a recurring expense</h2>
+    <Tape className="space-y-3 pt-5">
+      <TapeLabel>Add a recurring expense</TapeLabel>
       <div className="flex gap-2">
-        <input
-          className="input flex-1 py-2"
+        <Input
+          className="flex-1 py-2 font-mono"
           inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
@@ -116,7 +122,7 @@ function AddRecurring() {
           aria-label="Currency"
           value={currency}
           onChange={(e) => setCurrencyEdit(e.target.value)}
-          className="rounded-lg bg-surface-2 px-3 py-2 font-medium"
+          className="rounded-lg border border-rule bg-paper px-3 py-2 font-mono text-sm font-medium text-ink outline-none focus:border-accent"
         >
           {/* Until the catalogue loads, the only option is the one already selected — so the control
               can't briefly offer a list that excludes the user's own currency. */}
@@ -132,9 +138,10 @@ function AddRecurring() {
           <button
             key={c.id}
             onClick={() => setCategoryId(c.id)}
+            aria-pressed={categoryId === c.id}
             className={cn(
-              "flex flex-col items-center gap-1 rounded-xl border py-2 transition",
-              categoryId === c.id ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+              "flex flex-col items-center gap-1 rounded-lg border py-2 transition",
+              categoryId === c.id ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-muted",
             )}
           >
             <CategoryIcon name={c.icon} className="size-4" />
@@ -144,25 +151,25 @@ function AddRecurring() {
       </div>
       <label className="flex items-center justify-between gap-2 text-sm text-faint">
         Day of month
-        <input
-          className="input w-20 py-2 text-center"
+        <Input
+          className="w-20 py-2 text-center font-mono"
           inputMode="numeric"
           value={day}
           onChange={(e) => setDay(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
           placeholder="1"
         />
       </label>
-      <input
-        className="input py-2"
+      <Input
+        className="py-2"
         value={note}
         maxLength={280}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Note (optional)"
       />
-      <button onClick={() => create.mutate()} disabled={!canAdd} className="btn-primary w-full py-3">
+      <Button full onClick={() => create.mutate()} disabled={!canAdd}>
         {create.isPending ? "Adding…" : "Add recurring"}
-      </button>
-    </section>
+      </Button>
+    </Tape>
   );
 }
 
@@ -201,21 +208,21 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
 
   if (!editing) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-3 py-2.5">
         <button onClick={() => setEditing(true)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
           <CategoryIcon
             name={category?.icon ?? "ellipsis"}
             className={cn("size-5 shrink-0", rule.active ? "text-faint" : "text-faint/40")}
           />
           <div className="min-w-0 flex-1">
-            <div className={cn("truncate font-medium", !rule.active && "text-faint line-through")}>
+            <div className={cn("truncate text-sm font-medium", !rule.active && "text-faint line-through")}>
               {category?.label ?? "Other"}
             </div>
-            <div className="truncate text-xs text-faint">
+            <div className="truncate font-mono text-[10px] uppercase text-faint">
               {ordinal(rule.day_of_month)} of the month{rule.note ? ` · ${rule.note}` : ""}
             </div>
           </div>
-          <div className={cn("shrink-0 font-semibold tabular-nums", !rule.active && "text-faint")}>
+          <div className={cn("shrink-0 font-mono text-sm font-semibold tabular-nums", !rule.active && "text-faint")}>
             {money(rule.amount_cents, rule.currency)}
           </div>
         </button>
@@ -223,9 +230,9 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
           onClick={() => toggle.mutate()}
           disabled={toggle.isPending}
           aria-label={rule.active ? "Pause" : "Resume"}
-          className={cn("h-6 w-11 shrink-0 rounded-full p-0.5 transition", rule.active ? "bg-accent" : "bg-surface-2")}
+          className="shrink-0"
         >
-          <span className={cn("block size-5 rounded-full bg-fg transition", rule.active && "translate-x-5")} />
+          <SwitchIndicator on={rule.active} />
         </button>
       </div>
     );
@@ -234,9 +241,9 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
   const canSave = Number(amount) > 0 && !!categoryId && Number(day) >= 1 && !save.isPending;
 
   return (
-    <div className="space-y-3 px-4 py-3">
-      <input
-        className="input py-2"
+    <div className="space-y-3 py-3">
+      <Input
+        className="py-2 font-mono"
         inputMode="decimal"
         value={amount}
         onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
@@ -247,9 +254,10 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
           <button
             key={c.id}
             onClick={() => setCategoryId(c.id)}
+            aria-pressed={categoryId === c.id}
             className={cn(
-              "flex flex-col items-center gap-1 rounded-xl border py-2 transition",
-              categoryId === c.id ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted",
+              "flex flex-col items-center gap-1 rounded-lg border py-2 transition",
+              categoryId === c.id ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-muted",
             )}
           >
             <CategoryIcon name={c.icon} className="size-4" />
@@ -259,36 +267,32 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
       </div>
       <label className="flex items-center justify-between gap-2 text-sm text-faint">
         Day of month
-        <input
-          className="input w-20 py-2 text-center"
+        <Input
+          className="w-20 py-2 text-center font-mono"
           inputMode="numeric"
           value={day}
           onChange={(e) => setDay(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
           placeholder="1"
         />
       </label>
-      <input
-        className="input py-2"
+      <Input
+        className="py-2"
         value={note}
         maxLength={280}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Note (optional)"
       />
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => del.mutate()}
-          disabled={del.isPending}
-          className="btn-ghost px-3 py-2 text-sm text-danger"
-        >
+        <Button variant="ghost" size="sm" onClick={() => del.mutate()} disabled={del.isPending} className="text-stamp">
           <Trash2 className="size-4" /> Delete
-        </button>
+        </Button>
         <div className="flex-1" />
-        <button onClick={() => setEditing(false)} className="btn-ghost px-3 py-2 text-sm">
+        <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
           Cancel
-        </button>
-        <button onClick={() => save.mutate()} disabled={!canSave} className="btn-primary px-4 py-2 text-sm">
+        </Button>
+        <Button size="sm" onClick={() => save.mutate()} disabled={!canSave}>
           {save.isPending ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </div>
     </div>
   );

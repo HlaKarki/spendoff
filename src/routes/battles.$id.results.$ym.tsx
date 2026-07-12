@@ -3,6 +3,10 @@ import { ArrowLeft, Crown, Flame, TrendingUp } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { StandingsRows } from "../components/Standings";
+import { RuleLine } from "../components/ui/rule-line";
+import { Stamp } from "../components/ui/stamp";
+import { Tape } from "../components/ui/tape";
+import { TapeLabel } from "../components/ui/tape-label";
 import { formatMonth, money } from "../lib/format";
 import { useMe, useResult } from "../lib/queries";
 import type { MonthlyResultSnapshot } from "../lib/types";
@@ -23,7 +27,7 @@ function Showdown() {
   const me = useMe();
   const result = useResult(id, ym);
 
-  if (result.isLoading) return <div className="h-64 animate-pulse rounded-2xl bg-surface" />;
+  if (result.isLoading) return <div className="h-64 animate-pulse rounded-2xl bg-paper-2" />;
   if (!result.data) return <p className="text-muted">This month hasn't been closed yet.</p>;
 
   const snap = result.data.snapshot;
@@ -31,66 +35,68 @@ function Showdown() {
   const nameOf = (uid: string | null) => snap.standings.find((s) => s.userId === uid)?.displayName ?? "—";
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center gap-3 pt-2">
-        <Link to="/battles/$id" params={{ id }} className="text-faint">
+    <div className="space-y-5">
+      <header className="flex items-baseline gap-3 px-1 pt-2">
+        <Link to="/battles/$id" params={{ id }} className="self-center text-faint" aria-label="Back to battle">
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="font-display text-2xl font-bold tracking-tight">{formatMonth(ym)}</h1>
+        <h1 className="font-mono text-base font-bold uppercase tracking-wide">{formatMonth(ym)}</h1>
+        <span className="ml-auto font-mono text-xs text-muted">final</span>
       </header>
 
-      {/* Winner banner */}
-      <div className="card overflow-hidden">
-        <div className="bg-gradient-to-b from-accent/15 to-transparent px-6 py-8 text-center">
+      {/* The settled slip — the stamp thunk is the app's second and last animation. */}
+      <Tape className="pt-6">
+        <div className="text-center">
+          <Stamp thunk className="text-sm">
+            Settled
+          </Stamp>
           {snap.isTie ? (
             <>
-              <div className="text-4xl">🤝</div>
-              <p className="mt-2 font-display text-2xl font-black">Dead heat</p>
-              <p className="text-sm text-muted">Nobody pulled ahead this month.</p>
+              <p className="mt-4 font-mono text-xl font-bold uppercase tracking-wide">Dead heat</p>
+              <p className="mt-1 text-sm text-muted">Nobody pulled ahead this month.</p>
             </>
           ) : snap.winnerUserId ? (
             <>
-              <Crown className="mx-auto size-10 text-gold" />
-              <p className="mt-2 text-sm uppercase tracking-wide text-faint">Winner</p>
-              <p className="font-display text-3xl font-black text-accent">{nameOf(snap.winnerUserId)}</p>
+              <TapeLabel className="mt-5">Winner</TapeLabel>
+              <p className="mt-1 flex items-center justify-center gap-2 font-mono text-2xl font-bold uppercase tracking-wide text-accent">
+                <Crown className="size-6 text-gold" />
+                {nameOf(snap.winnerUserId)}
+              </p>
               {meId === snap.winnerUserId && <p className="mt-1 text-sm text-muted">That's you. Spent the least. 🏆</p>}
             </>
           ) : (
-            <p className="font-display text-xl font-bold">No winner — nobody logged.</p>
+            <p className="mt-4 font-mono text-lg font-bold uppercase">No winner — nobody logged.</p>
           )}
         </div>
-      </div>
-
-      {/* Standings */}
-      <section className="space-y-3">
-        <h2 className="label">Final standings</h2>
+        <RuleLine className="my-4" />
+        <TapeLabel>Final standings</TapeLabel>
         <StandingsRows snapshot={snap} meId={meId} currency={snap.currency} />
-      </section>
+      </Tape>
 
       {/* Callouts */}
       {snap.callouts.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="label">The breakdown</h2>
-          <div className="space-y-2">
+        <Tape className="pt-5">
+          <TapeLabel>The breakdown</TapeLabel>
+          <div className="mt-2 space-y-2">
             {snap.callouts.map((c, i) => (
-              <p key={i} className="rounded-xl bg-surface px-4 py-3 text-sm text-fg">
+              <p key={i} className="rounded-lg bg-paper-2 px-3.5 py-2.5 text-sm text-ink">
                 {c}
               </p>
             ))}
           </div>
-        </section>
+        </Tape>
       )}
 
       {/* Category head-to-head */}
       {snap.categories.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="label">Category head-to-head</h2>
-          <div className="card divide-y divide-line">
+        <Tape className="pt-5">
+          <TapeLabel>Category head-to-head</TapeLabel>
+          <div className="mt-1 divide-y divide-dashed divide-rule">
             {snap.categories.map((cat) => (
               <CategoryRow key={cat.categoryId} cat={cat} snap={snap} nameOf={nameOf} />
             ))}
           </div>
-        </section>
+        </Tape>
       )}
 
       {/* Daily race */}
@@ -131,36 +137,34 @@ function DailyRace({ snap, nameOf }: { snap: MonthlyResultSnapshot; nameOf: (uid
   const y = (v: number) => H - padY - (v / max) * (H - padY * 2);
 
   return (
-    <section className="space-y-2">
-      <h2 className="label">Daily race</h2>
-      <div className="card px-4 py-4">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-          {series.map((s) => (
-            <g key={s.userId} style={{ opacity: s.opacity }}>
-              <polyline
-                points={s.points.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={2.5}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-              <circle cx={x(days.length - 1)} cy={y(s.final)} r={3.5} fill={s.color} />
-            </g>
-          ))}
-        </svg>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-          {series.map((s) => (
-            <div key={s.userId} className="flex items-center gap-1.5 text-xs">
-              <span className="size-2.5 rounded-full" style={{ backgroundColor: s.color, opacity: s.opacity }} />
-              <span className="font-medium text-muted">{nameOf(s.userId)}</span>
-              <span className="tabular-nums text-faint">{money(s.final, snap.currency)}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-faint">Cumulative spend · lower line is winning</p>
+    <Tape className="pt-5">
+      <TapeLabel>Daily race</TapeLabel>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full">
+        {series.map((s) => (
+          <g key={s.userId} style={{ opacity: s.opacity }}>
+            <polyline
+              points={s.points.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={2.5}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            <circle cx={x(days.length - 1)} cy={y(s.final)} r={3.5} fill={s.color} />
+          </g>
+        ))}
+      </svg>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+        {series.map((s) => (
+          <div key={s.userId} className="flex items-center gap-1.5 text-xs">
+            <span className="size-2.5 rounded-full" style={{ backgroundColor: s.color, opacity: s.opacity }} />
+            <span className="font-medium text-muted">{nameOf(s.userId)}</span>
+            <span className="font-mono tabular-nums text-faint">{money(s.final, snap.currency)}</span>
+          </div>
+        ))}
       </div>
-    </section>
+      <p className="mt-2 text-xs text-faint">Cumulative spend · lower line is winning</p>
+    </Tape>
   );
 }
 
@@ -175,22 +179,24 @@ function CategoryRow({
 }) {
   const max = Math.max(1, ...cat.perUser.map((p) => p.totalCents));
   return (
-    <div className="px-4 py-3">
+    <div className="py-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-medium">{cat.label}</span>
-        {cat.winnerUserId && <span className="text-xs font-semibold text-accent">{nameOf(cat.winnerUserId)} won</span>}
+        <span className="text-sm font-medium">{cat.label}</span>
+        {cat.winnerUserId && (
+          <span className="font-mono text-[10px] font-bold uppercase text-accent">{nameOf(cat.winnerUserId)} won</span>
+        )}
       </div>
       <div className="space-y-1.5">
         {cat.perUser.map((p) => (
           <div key={p.userId} className="flex items-center gap-2">
             <span className="w-16 shrink-0 truncate text-xs text-faint">{nameOf(p.userId)}</span>
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-paper-2">
               <div
                 className={cn("h-full rounded-full", p.userId === cat.winnerUserId ? "bg-accent" : "bg-faint")}
                 style={{ width: `${(p.totalCents / max) * 100}%` }}
               />
             </div>
-            <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+            <span className="w-14 shrink-0 text-right font-mono text-xs tabular-nums text-muted">
               {money(p.totalCents, snap.currency)}
             </span>
           </div>
@@ -205,12 +211,12 @@ function Trends({ snap, nameOf }: { snap: MonthlyResultSnapshot; nameOf: (uid: s
   if (!t.biggestSplurge && !t.mostExpensiveDay && t.winStreaks.length === 0) return null;
   return (
     <section className="space-y-2">
-      <h2 className="label">Trends</h2>
+      <TapeLabel className="text-left">Trends</TapeLabel>
       <div className="grid grid-cols-2 gap-3">
         {t.biggestSplurge && (
-          <StatCard icon={<Flame className="size-4 text-danger" />} label="Biggest splurge">
+          <StatCard icon={<Flame className="size-4 text-stamp" />} label="Biggest splurge">
             {money(t.biggestSplurge.amountCents, snap.currency)}
-            <span className="block text-xs font-normal text-faint">
+            <span className="block font-sans text-xs font-normal normal-case text-faint">
               {nameOf(t.biggestSplurge.userId)} · {t.biggestSplurge.label}
             </span>
           </StatCard>
@@ -218,7 +224,7 @@ function Trends({ snap, nameOf }: { snap: MonthlyResultSnapshot; nameOf: (uid: s
         {t.mostExpensiveDay && (
           <StatCard icon={<TrendingUp className="size-4 text-gold" />} label="Priciest day">
             {money(t.mostExpensiveDay.totalCents, snap.currency)}
-            <span className="block text-xs font-normal text-faint">
+            <span className="block font-sans text-xs font-normal normal-case text-faint">
               {nameOf(t.mostExpensiveDay.userId)} · {t.mostExpensiveDay.date.slice(5)}
             </span>
           </StatCard>
@@ -226,7 +232,7 @@ function Trends({ snap, nameOf }: { snap: MonthlyResultSnapshot; nameOf: (uid: s
         {t.winStreaks.map((w) => (
           <StatCard key={w.userId} icon={<Crown className="size-4 text-accent" />} label="Win streak">
             {w.months} {w.months === 1 ? "month" : "months"}
-            <span className="block text-xs font-normal text-faint">{nameOf(w.userId)}</span>
+            <span className="block font-sans text-xs font-normal normal-case text-faint">{nameOf(w.userId)}</span>
           </StatCard>
         ))}
       </div>
@@ -236,11 +242,11 @@ function Trends({ snap, nameOf }: { snap: MonthlyResultSnapshot; nameOf: (uid: s
 
 function StatCard({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
-    <div className="card px-4 py-3">
-      <div className="flex items-center gap-1.5 text-xs text-faint">
+    <div className="rounded-lg border border-line bg-paper px-4 py-3 shadow-paper">
+      <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wide text-faint">
         {icon} {label}
       </div>
-      <div className="mt-1 font-display text-lg font-bold">{children}</div>
+      <div className="mt-1 font-mono text-lg font-bold">{children}</div>
     </div>
   );
 }

@@ -13,7 +13,11 @@ async function signUp(browser: Browser, name: string, email: string) {
   const page = await ctx.newPage();
 
   await page.goto("/onboard");
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  // Retry until the tab actually switches — a click before hydration is silently dead.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(page.getByPlaceholder("e.g. Alex")).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByPlaceholder("e.g. Alex").fill(name);
   await page.getByPlaceholder("you@email.com").fill(email);
   await page.getByRole("button", { name: "Email me a link instead" }).click();
@@ -65,7 +69,7 @@ test("a battle member's log is private by default, shareable, note-free, and rev
   await alice.waitForURL(/\/battles\/[^/]+$/, { timeout: 10_000 });
 
   const battleUrl = alice.url();
-  const code = (await alice.locator(".font-mono").first().innerText()).trim();
+  const code = (await alice.getByTestId("invite-code").innerText()).trim();
 
   await bob.goto("/battles");
   await bob.getByRole("button", { name: "Join" }).click();

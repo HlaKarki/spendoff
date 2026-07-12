@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { buttonVariants } from "../components/ui/button";
 import { api } from "../lib/api";
 
 export const Route = createFileRoute("/auth/magic")({
@@ -37,8 +38,8 @@ function MagicConsume() {
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
       {error ? (
         <>
-          <p className="text-lg font-semibold text-danger">{error}</p>
-          <a href="/onboard" className="btn-primary mt-5 px-6 py-3">
+          <p className="text-lg font-semibold text-stamp">{error}</p>
+          <a href="/onboard" className={buttonVariants({ size: "lg", className: "mt-5" })}>
             Back to sign in
           </a>
         </>

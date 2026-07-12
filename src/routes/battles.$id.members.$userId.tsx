@@ -4,6 +4,10 @@ import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
+import { Money } from "../components/ui/money";
+import { RuleLine } from "../components/ui/rule-line";
+import { Tape } from "../components/ui/tape";
+import { TapeLabel } from "../components/ui/tape-label";
 import { currentYearMonth, dayInTz, formatMonthShort, formatTime, money, relativeDayKey } from "../lib/format";
 import { useCategories, useMemberHistory, useMe, useTimezone } from "../lib/queries";
 import type { SharedExpense } from "../lib/types";
@@ -49,19 +53,22 @@ function MemberLog() {
 
   return (
     <div className="space-y-5">
-      <header className="flex items-center gap-3 pt-2">
-        <Link to="/battles/$id" params={{ id }} className="text-faint">
+      <header className="flex items-baseline gap-3 px-1 pt-2">
+        <Link to="/battles/$id" params={{ id }} className="self-center text-faint" aria-label="Back to battle">
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="font-display text-2xl font-bold tracking-tight">{name || "Log"}</h1>
+        <h1 className="min-w-0 truncate font-mono text-base font-bold uppercase tracking-wide">{name || "Log"}</h1>
+        <span className="ml-auto shrink-0 font-mono text-[10px] uppercase text-faint">shared log</span>
       </header>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <button onClick={() => setOffset(offset + 1)} className="text-faint" aria-label="Previous month">
             <ChevronLeft className="size-5" />
           </button>
-          <span className="min-w-[5.5rem] text-center text-sm font-semibold">{formatMonthShort(ym)}</span>
+          <span className="min-w-[5.5rem] text-center font-mono text-xs font-semibold uppercase">
+            {formatMonthShort(ym)}
+          </span>
           <button
             onClick={() => setOffset(offset - 1)}
             disabled={offset === 0}
@@ -71,45 +78,39 @@ function MemberLog() {
             <ChevronRight className="size-5" />
           </button>
         </div>
-        {history.data?.shared && rows.length > 0 && (
-          <span className="text-sm font-bold tabular-nums">{money(total, theirBase)}</span>
-        )}
+        {history.data?.shared && rows.length > 0 && <Money minor={total} currency={theirBase} className="text-sm" />}
       </div>
 
       {history.isLoading ? (
-        <div className="h-28 animate-pulse rounded-xl bg-surface" />
+        <div className="h-28 animate-pulse rounded-lg bg-paper-2" />
       ) : !history.data?.shared ? (
-        <div className="card flex items-center gap-3 px-4 py-5 text-sm text-muted">
-          <Lock className="size-4 shrink-0 text-faint" />
-          <span>{name || "This player"} keeps their log private.</span>
-        </div>
+        <Tape className="pt-5">
+          <div className="flex items-center gap-3 text-sm text-muted">
+            <Lock className="size-4 shrink-0 text-faint" />
+            <span>{name || "This player"} keeps their log private.</span>
+          </div>
+        </Tape>
       ) : rows.length === 0 ? (
-        <p className="card px-4 py-3 text-sm text-muted">Nothing logged in {formatMonthShort(ym)}.</p>
+        <Tape className="pt-5">
+          <p className="text-sm text-muted">Nothing logged in {formatMonthShort(ym)}.</p>
+        </Tape>
       ) : (
         <div className="space-y-4">
           {byDay.map(([day, items]) => (
-            <section key={day} className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-sm font-semibold">{relativeDayKey(day, tz)}</span>
-                <span className="text-sm font-bold tabular-nums">
-                  {money(
-                    items.reduce((s, e) => s + e.base_amount_cents, 0),
-                    theirBase,
-                  )}
-                </span>
-              </div>
-              <div className="card divide-y divide-line">
+            <Tape key={day} className="pt-5">
+              <TapeLabel>{relativeDayKey(day, tz)}</TapeLabel>
+              <div className="mt-1 divide-y divide-dashed divide-rule">
                 {items.map((e) => {
                   const category = catFor(e.category_id);
                   const converted = e.currency !== e.base_currency;
                   return (
-                    <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+                    <div key={e.id} className="flex items-center gap-3 py-2.5">
                       <CategoryIcon name={category?.icon ?? "ellipsis"} className="size-5 shrink-0 text-faint" />
                       {/* Category only. There is no note here to render — the server never sends one. */}
-                      <div className="min-w-0 flex-1 truncate font-medium">{category?.label ?? "Other"}</div>
+                      <div className="min-w-0 flex-1 truncate text-sm font-medium">{category?.label ?? "Other"}</div>
                       <div className="text-right">
-                        <div className="font-semibold tabular-nums">{money(e.amount_cents, e.currency)}</div>
-                        <div className="text-xs text-faint">
+                        <Money minor={e.amount_cents} currency={e.currency} className="text-sm" />
+                        <div className="font-mono text-[10px] uppercase text-faint">
                           {converted && `${money(e.base_amount_cents, e.base_currency)} · `}
                           {formatTime(e.spent_at, tz)}
                         </div>
@@ -118,7 +119,16 @@ function MemberLog() {
                   );
                 })}
               </div>
-            </section>
+              <RuleLine />
+              <div className="flex items-baseline justify-between">
+                <span className="font-mono text-xs font-bold uppercase">{relativeDayKey(day, tz)}</span>
+                <Money
+                  minor={items.reduce((s, e) => s + e.base_amount_cents, 0)}
+                  currency={theirBase}
+                  className="text-sm"
+                />
+              </div>
+            </Tape>
           ))}
         </div>
       )}

@@ -168,7 +168,9 @@ function BattleDetail() {
       <Tape className="pt-5">
         <TapeLabel>Setup</TapeLabel>
 
-        <p className="label mt-3 mb-2">Win rule {!isOwner && "(owner sets this)"}</p>
+        <p className="mt-3 mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
+          Win rule {!isOwner && "(owner sets this)"}
+        </p>
         <div className="grid grid-cols-3 gap-2">
           {RULES.map((r) => (
             <button
@@ -195,7 +197,9 @@ function BattleDetail() {
         <RuleLine className="my-4" />
         <button onClick={copyCode} className="flex w-full items-center justify-between py-1 text-left">
           <span>
-            <span className="label block">Invite code</span>
+            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
+              Invite code
+            </span>
             <span data-testid="invite-code" className="font-mono text-lg font-bold tracking-widest">
               {b.invite_code}
             </span>
@@ -252,7 +256,7 @@ function Players({ id, members, meId }: { id: string; members: BattleMember[]; m
 
   return (
     <div>
-      <p className="label mb-1">Players</p>
+      <p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">Players</p>
       <div className="divide-y divide-dashed divide-rule">
         {members.map((m) => {
           const isMe = m.user_id === meId;

@@ -42,7 +42,7 @@
     --t-rule: #4a4739;
     --t-ink: #ebe7d8;
     --t-muted: #aca890;
-    --t-faint: #7c7967;
+    --t-faint: #868372;
     --t-accent: #8fa3ff;
     --t-accent-ink: #1a2033;
     --t-stamp: #e0685b;
@@ -59,7 +59,7 @@
   --t-rule: #4a4739;
   --t-ink: #ebe7d8;
   --t-muted: #aca890;
-  --t-faint: #7c7967;
+  --t-faint: #868372;
   --t-accent: #8fa3ff;
   --t-accent-ink: #1a2033;
   --t-stamp: #e0685b;
@@ -85,16 +85,6 @@
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --shadow-paper: var(--shadow-paper);
-
-  /* LEGACY ALIASES — old token names still referenced by unmigrated screens.
-   * Deleted in the redesign cleanup (HLA-152); do not use in new code. */
-  --color-surface: var(--t-paper);
-  --color-surface-2: var(--t-paper-2);
-  --color-fg: var(--t-ink);
-  --color-accent-fg: var(--t-accent-ink);
-  --color-danger: var(--t-stamp);
-  --color-win: var(--t-accent);
-  --font-display: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 html {
@@ -198,29 +188,6 @@ body {
       transition: none;
       animation: none;
     }
-  }
-}
-
-/* LEGACY component classes — consumed by unmigrated screens only.
- * Absorbed into src/components/ui/ and deleted in HLA-152. */
-@layer components {
-  .card {
-    @apply rounded-2xl border border-line bg-paper;
-  }
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent font-semibold text-accent-ink transition hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
-  }
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-paper-2 font-semibold text-ink transition hover:bg-line active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
-  }
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line font-semibold text-ink transition hover:bg-paper-2 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
-  }
-  .input {
-    @apply w-full rounded-xl border border-line bg-paper-2 px-4 py-3 text-ink outline-none placeholder:text-faint focus:border-accent/60;
-  }
-  .label {
-    @apply font-mono text-xs font-semibold uppercase tracking-wide text-faint;
   }
 }
 

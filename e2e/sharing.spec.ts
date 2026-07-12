@@ -69,7 +69,7 @@ test("a battle member's log is private by default, shareable, note-free, and rev
   await alice.waitForURL(/\/battles\/[^/]+$/, { timeout: 10_000 });
 
   const battleUrl = alice.url();
-  const code = (await alice.locator(".font-mono").first().innerText()).trim();
+  const code = (await alice.getByTestId("invite-code").innerText()).trim();
 
   await bob.goto("/battles");
   await bob.getByRole("button", { name: "Join" }).click();

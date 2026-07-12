@@ -1,8 +1,8 @@
-import { Crown } from "lucide-react";
-import { money } from "../lib/format";
+import { Money } from "./ui/money";
 import type { MonthlyResultSnapshot, Standing } from "../lib/types";
 import { cn } from "../lib/utils";
 
+/** Standings print as register rows: position, name, what they've spent. */
 export function StandingsRows({
   snapshot,
   meId,
@@ -15,7 +15,7 @@ export function StandingsRows({
   const { standings, winnerUserId } = snapshot;
   const showRule = snapshot.winRule === "most_under_budget";
   return (
-    <div className="space-y-2">
+    <div className="divide-y divide-dashed divide-rule">
       {standings.map((s) => (
         <Row
           key={s.userId}
@@ -44,41 +44,40 @@ function Row({
   showUnder: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-3 rounded-xl border px-3.5 py-3",
-        isWinner ? "border-accent/50 bg-accent/5" : "border-line bg-surface-2",
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
-          isWinner ? "bg-accent text-accent-fg" : "bg-surface text-faint",
-        )}
-      >
-        {s.rank}
+    <div className="flex items-baseline gap-3 py-2.5">
+      <span className={cn("w-6 shrink-0 font-mono text-[11px] font-semibold", isWinner ? "text-gold" : "text-faint")}>
+        {isWinner ? "W" : String(s.rank).padStart(2, "0")}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate font-semibold text-fg">{s.displayName}</span>
-          {isMe && <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold text-muted">YOU</span>}
-          {isWinner && <Crown className="size-4 text-gold" />}
+        <div className="flex items-baseline gap-1.5">
+          <span className={cn("truncate text-sm font-semibold", isWinner ? "text-accent" : "text-ink")}>
+            {s.displayName}
+          </span>
+          {isMe && <span className="font-mono text-[10px] uppercase text-faint">you</span>}
         </div>
-        {s.loggedCount === 0 ? (
-          <span className="text-xs text-faint">no spend logged 👻</span>
-        ) : (
-          <span className="text-xs text-faint">{s.loggedCount} logged</span>
-        )}
+        <span className="font-mono text-[10px] uppercase tracking-wide text-faint">
+          {s.loggedCount === 0 ? "no spend logged 👻" : `${s.loggedCount} logged`}
+        </span>
       </div>
       <div className="text-right">
-        <div className={cn("font-bold tabular-nums", isWinner ? "text-accent" : "text-fg")}>
-          {money(s.totalCents, currency)}
-        </div>
+        <Money
+          minor={s.totalCents}
+          currency={currency}
+          className={cn("text-sm", isWinner ? "text-accent" : "text-ink")}
+        />
         {showUnder && s.underBudgetCents !== null && (
-          <div className="text-xs tabular-nums text-faint">
-            {s.underBudgetCents >= 0
-              ? `${money(s.underBudgetCents, currency)} under`
-              : `${money(-s.underBudgetCents, currency)} over`}
+          <div className="font-mono text-[10px] tabular-nums text-faint">
+            {s.underBudgetCents >= 0 ? (
+              <>
+                <Money minor={s.underBudgetCents} currency={currency} className="font-mono text-[10px] font-normal" />{" "}
+                under
+              </>
+            ) : (
+              <>
+                <Money minor={-s.underBudgetCents} currency={currency} className="font-mono text-[10px] font-normal" />{" "}
+                over
+              </>
+            )}
           </div>
         )}
       </div>

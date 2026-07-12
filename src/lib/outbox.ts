@@ -51,6 +51,14 @@ export async function removeItem(clientId: string): Promise<void> {
   await d.delete(STORE, clientId);
 }
 
+/**
+ * The fields a queued item puts on the wire. `public/sw.js` drains the same store when no tab is
+ * open and has to forward the same set — a field it drops doesn't fail loudly, it rewrites the
+ * expense (an item queued in EUR arriving with no `currency` is booked at the user's base currency).
+ * `sw-outbox.test.ts` reads both files and fails if they disagree, so add a field here and there.
+ */
+export const SYNC_FIELDS = ["client_id", "amount_cents", "currency", "category_id", "note", "spent_at"] as const;
+
 /** Drain the outbox to the server (idempotent on client_id). Returns how many synced. */
 export async function flushOutbox(): Promise<{ synced: number; remaining: number }> {
   const items = await pending();

@@ -44,6 +44,20 @@ self.addEventListener("sync", (event) => {
   if (event.tag === "sync-expenses") event.waitUntil(flushOutbox());
 });
 
+/**
+ * The closed-tab half of the outbox drain. `src/lib/outbox.ts` owns the same job while a tab is
+ * alive; this runs when the browser fires Background Sync with no page around to do it.
+ *
+ * It must stay behaviourally identical to `flushOutbox()` there — the two have drifted twice, so
+ * `src/lib/sw-outbox.test.ts` now reads this file and fails if they part ways again. Two rules:
+ *
+ *   1. Forward every field the item carries. Dropping one doesn't fail loudly; it rewrites the
+ *      expense. An item queued in EUR that arrives with no `currency` is booked at the user's base
+ *      currency instead — €50 silently becomes $50.
+ *   2. Delete only what the server confirmed. It skips items it can't accept (unknown category) or
+ *      can't yet price (a foreign currency while the rate feed is behind) and echoes back the rest.
+ *      Clearing the store on a bare 200 throws the skipped ones away.
+ */
 async function flushOutbox() {
   const db = await self.idb.openDB(DB_NAME, 1);
   let items;
@@ -62,6 +76,7 @@ async function flushOutbox() {
       items: items.map((i) => ({
         client_id: i.client_id,
         amount_cents: i.amount_cents,
+        currency: i.currency,
         category_id: i.category_id,
         note: i.note,
         spent_at: i.spent_at,
@@ -70,7 +85,13 @@ async function flushOutbox() {
   });
   if (!res.ok) throw new Error("sync failed"); // reject → browser retries later
 
+  const body = await res.json();
+  const confirmed = new Set((body.expenses || []).map((e) => e.client_id));
   const tx = db.transaction(STORE, "readwrite");
-  for (const i of items) await tx.store.delete(i.client_id);
+  for (const i of items) if (confirmed.has(i.client_id)) await tx.store.delete(i.client_id);
   await tx.done;
+
+  // A skipped item stays queued. Ask for another sync so it isn't stranded until the next log —
+  // by then the category may exist, or the rate feed may have caught up.
+  if (confirmed.size < items.length) throw new Error("partial sync"); // reject → browser retries later
 }

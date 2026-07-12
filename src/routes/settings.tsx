@@ -4,10 +4,17 @@ import { Bell, BellOff, ChevronRight, LogOut, Repeat } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
+import { Button } from "../components/ui/button";
+import { RuleLine } from "../components/ui/rule-line";
+import { SwitchIndicator } from "../components/ui/switch";
+import { Tape } from "../components/ui/tape";
+import { TapeLabel } from "../components/ui/tape-label";
 import { api, ApiError } from "../lib/api";
 import { browserCurrency, browserTimezone } from "../lib/format";
 import { useCurrencies, useMe } from "../lib/queries";
 import { currentPushSubscription, disablePush, enablePush, isPushSupported } from "../lib/push";
+import { getThemePref, setThemePref, type ThemePref } from "../lib/theme";
+import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/settings")({
   component: () => (
@@ -18,6 +25,9 @@ export const Route = createFileRoute("/settings")({
     </ClientOnly>
   ),
 });
+
+const SELECT_CLASSES =
+  "w-full rounded-lg border border-rule bg-paper px-3 py-2.5 font-mono text-sm font-medium text-ink outline-none focus:border-accent disabled:opacity-60";
 
 function Settings() {
   const me = useMe();
@@ -76,72 +86,114 @@ function Settings() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="pt-2">
-        <h1 className="font-display text-3xl font-bold tracking-tight">Settings</h1>
+    <div className="space-y-5">
+      <header className="flex items-baseline justify-between px-1 pt-2">
+        <h1 className="font-mono text-base font-bold uppercase tracking-wide">Settings</h1>
+        <span className="font-mono text-xs text-muted">you</span>
       </header>
 
-      <section className="card divide-y divide-line">
-        <Row label="Name" value={me.data?.display_name ?? "—"} />
+      <Tape className="pt-5">
+        <Row label="Name" value={me.data?.display_name ?? "—"} mono={false} />
+        <RuleLine className="my-1" />
         <Row label="Email" value={me.data?.email ?? "—"} />
-      </section>
+      </Tape>
+
+      <ThemeSection />
 
       <BaseCurrencySection />
 
       <TimezoneSection />
 
-      <Link to="/recurring" className="card flex items-center justify-between px-4 py-4">
-        <div className="flex items-center gap-3">
-          <Repeat className="size-5 text-faint" />
-          <div className="text-left">
-            <div className="font-medium">Recurring expenses</div>
-            <div className="text-xs text-faint">Auto-log fixed monthly costs</div>
-          </div>
-        </div>
-        <ChevronRight className="size-5 text-faint" />
+      <Link to="/recurring" className="block">
+        <Tape className="pb-5 pt-4">
+          <span className="flex items-center justify-between">
+            <span className="flex items-center gap-3">
+              <Repeat className="size-5 text-faint" />
+              <span className="text-left">
+                <span className="block text-sm font-medium">Recurring expenses</span>
+                <span className="block text-xs text-faint">Auto-log fixed monthly costs</span>
+              </span>
+            </span>
+            <ChevronRight className="size-5 text-faint" />
+          </span>
+        </Tape>
       </Link>
 
-      <section className="space-y-2">
-        <h2 className="label">Notifications</h2>
+      <Tape className="pt-5">
+        <TapeLabel className="text-left">Notifications</TapeLabel>
         <button
           onClick={togglePush}
           disabled={pushBusy}
-          className="card flex w-full items-center justify-between px-4 py-4"
+          className="mt-2 flex w-full items-center justify-between gap-3 text-left"
         >
-          <div className="flex items-center gap-3">
+          <span className="flex items-center gap-3">
             {pushOn ? <Bell className="size-5 text-accent" /> : <BellOff className="size-5 text-faint" />}
-            <div className="text-left">
-              <div className="font-medium">Daily reminders & results</div>
-              <div className="text-xs text-faint">{pushOn ? "On" : "Off"}</div>
-            </div>
-          </div>
-          <span className={`h-6 w-11 rounded-full p-0.5 transition ${pushOn ? "bg-accent" : "bg-surface-2"}`}>
-            <span className={`block size-5 rounded-full bg-fg transition ${pushOn ? "translate-x-5" : ""}`} />
+            <span>
+              <span className="block text-sm font-medium">Daily reminders & results</span>
+              <span className="block text-xs text-faint">{pushOn ? "On" : "Off"}</span>
+            </span>
           </span>
+          <SwitchIndicator on={pushOn} />
         </button>
-        {pushMsg && <p className="text-sm text-danger">{pushMsg}</p>}
-        <button onClick={sendTest} disabled={testBusy} className="btn-outline w-full py-3 text-sm">
+        {pushMsg && <p className="mt-2 text-sm text-stamp">{pushMsg}</p>}
+        <RuleLine className="my-3" />
+        <Button variant="outline" size="sm" full onClick={sendTest} disabled={testBusy}>
           {testBusy ? "Sending…" : "Send a test notification"}
-        </button>
-        {testMsg && <p className="text-sm text-muted">{testMsg}</p>}
-        <p className="text-xs text-faint">
+        </Button>
+        {testMsg && <p className="mt-2 text-sm text-muted">{testMsg}</p>}
+        <p className="mt-2 text-xs text-faint">
           On iPhone, add Spendoff to your Home Screen first to receive push. Otherwise notifications arrive by email.
         </p>
-      </section>
+      </Tape>
 
-      <button onClick={signOut} className="btn-ghost w-full py-3 text-danger">
+      <Button variant="ghost" full onClick={signOut} className="text-stamp">
         <LogOut className="size-4" /> Sign out
-      </button>
+      </Button>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3.5">
-      <span className="text-sm text-faint">{label}</span>
-      <span className="font-medium">{value}</span>
+    <div className="flex items-center justify-between gap-3 py-2">
+      <span className="text-sm font-medium">{label}</span>
+      <span className={cn("min-w-0 truncate text-sm text-muted", mono && "font-mono text-xs")}>{value}</span>
     </div>
+  );
+}
+
+/* Theme override is per-device (HLA-92 decision): localStorage, applied before
+ * first paint by the inline script in __root.tsx. "Auto" follows the device. */
+function ThemeSection() {
+  const [pref, setPref] = useState<ThemePref>(() => getThemePref());
+  const OPTIONS: { value: ThemePref; label: string }[] = [
+    { value: "auto", label: "Auto" },
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" },
+  ];
+  return (
+    <Tape className="pt-5">
+      <TapeLabel className="text-left">Theme</TapeLabel>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {OPTIONS.map((o) => (
+          <button
+            key={o.value}
+            aria-pressed={pref === o.value}
+            onClick={() => {
+              setThemePref(o.value);
+              setPref(o.value);
+            }}
+            className={cn(
+              "rounded-lg border px-2 py-2.5 text-xs font-semibold transition",
+              pref === o.value ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-muted",
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-faint">Auto follows this device's appearance. The choice stays on this device.</p>
+    </Tape>
   );
 }
 
@@ -176,9 +228,9 @@ function BaseCurrencySection() {
   });
 
   return (
-    <section className="space-y-2">
-      <h2 className="label">Currency</h2>
-      <div className="card space-y-3 px-4 py-4">
+    <Tape className="pt-5">
+      <TapeLabel className="text-left">Currency</TapeLabel>
+      <div className="mt-2 space-y-3">
         <select
           value={current ?? ""}
           disabled={!current || save.isPending}
@@ -186,7 +238,7 @@ function BaseCurrencySection() {
             setMsg(null);
             save.mutate(e.target.value);
           }}
-          className="w-full rounded-lg bg-surface-2 px-3 py-2.5 font-medium disabled:opacity-60"
+          className={SELECT_CLASSES}
         >
           {!current && <option value="">Loading…</option>}
           {(currencies.data ?? []).map((c) => (
@@ -197,16 +249,18 @@ function BaseCurrencySection() {
         </select>
 
         {!!current && current !== device && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            full
             onClick={() => {
               setMsg(null);
               save.mutate(device);
             }}
             disabled={save.isPending}
-            className="btn-outline w-full py-2.5 text-sm"
           >
             Use this device's currency ({device})
-          </button>
+          </Button>
         )}
 
         <p className="text-xs text-faint">
@@ -217,7 +271,7 @@ function BaseCurrencySection() {
         {save.isPending && <p className="text-sm text-muted">Saving…</p>}
         {msg && !save.isPending && <p className="text-sm text-muted">{msg}</p>}
       </div>
-    </section>
+    </Tape>
   );
 }
 
@@ -267,9 +321,9 @@ function TimezoneSection() {
   const mismatched = !!current && !!device && current !== device;
 
   return (
-    <section className="space-y-2">
-      <h2 className="label">Timezone</h2>
-      <div className="card space-y-3 px-4 py-4">
+    <Tape className="pt-5">
+      <TapeLabel className="text-left">Timezone</TapeLabel>
+      <div className="mt-2 space-y-3">
         <select
           value={current ?? ""}
           disabled={!current || save.isPending}
@@ -277,7 +331,7 @@ function TimezoneSection() {
             setMsg(null);
             save.mutate(e.target.value);
           }}
-          className="w-full rounded-lg bg-surface-2 px-3 py-2.5 font-medium disabled:opacity-60"
+          className={SELECT_CLASSES}
         >
           {!current && <option value="">Loading…</option>}
           {groups.map(([area, list]) => (
@@ -292,16 +346,18 @@ function TimezoneSection() {
         </select>
 
         {mismatched && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            full
             onClick={() => {
               setMsg(null);
               save.mutate(device);
             }}
             disabled={save.isPending}
-            className="btn-outline w-full py-2.5 text-sm"
           >
             Use this device's timezone ({device.replace(/_/g, " ")})
-          </button>
+          </Button>
         )}
 
         <p className="text-xs text-faint">
@@ -311,6 +367,6 @@ function TimezoneSection() {
         {save.isPending && <p className="text-sm text-muted">Saving…</p>}
         {msg && !save.isPending && <p className="text-sm text-muted">{msg}</p>}
       </div>
-    </section>
+    </Tape>
   );
 }

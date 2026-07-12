@@ -16,7 +16,7 @@ const TABS = [
 function Splash() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-bg">
-      <div className="animate-pulse font-display text-2xl font-bold tracking-tight text-accent">Spendoff</div>
+      <div className="animate-pulse font-mono text-xl font-bold uppercase tracking-[0.18em] text-ink">Spendoff</div>
     </div>
   );
 }

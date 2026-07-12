@@ -76,6 +76,22 @@ export function useStandings(id: string, yearMonth?: string) {
   });
 }
 
+/**
+ * Another member's log for one month. Deliberately never cached beyond the screen that's showing it:
+ * the owner can revoke sharing at any moment, and a stale copy sitting in the cache would keep
+ * rendering a log they've since made private. `gcTime: 0` drops it the moment the view unmounts, and
+ * a zero stale time means every visit re-asks the server — which is the only thing that knows.
+ */
+export function useMemberHistory(id: string, userId: string, yearMonth: string) {
+  return useQuery({
+    queryKey: ["member-history", id, userId, yearMonth],
+    queryFn: () => api.memberHistory(id, userId, yearMonth),
+    enabled: !!id && !!userId && !!yearMonth,
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
 export function useResults(id: string) {
   return useQuery({
     queryKey: ["results", id],

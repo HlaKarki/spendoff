@@ -43,6 +43,8 @@ export interface BattleMember {
   display_name: string;
   role: string;
   joined_at: string | null;
+  /** Whether this member lets THIS battle read their log. Your own row carries your toggle state. */
+  share_history: boolean;
 }
 
 export interface BattleDetail {
@@ -74,6 +76,30 @@ export interface Expense {
   year_month: string;
   created_at: string | null;
   updated_at: string | null;
+}
+
+/**
+ * Another member's expense. Deliberately narrower than `Expense`: no `note`, because free text is
+ * where the private detail lives and it never leaves its owner's account.
+ */
+export interface SharedExpense {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  base_currency: string;
+  base_amount_cents: number;
+  category_id: string;
+  spent_at: string;
+  year_month: string;
+}
+
+/** `shared: false` isn't an error — it's "this player keeps their log private", and the UI says so. */
+export interface MemberHistory {
+  user_id: string;
+  display_name: string;
+  year_month: string;
+  shared: boolean;
+  expenses: SharedExpense[];
 }
 
 export interface RecurringExpense {

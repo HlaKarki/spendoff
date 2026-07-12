@@ -32,7 +32,7 @@ import {
   useStandings,
   useTimezone,
 } from "../lib/queries";
-import type { Category, Expense, WinRule } from "../lib/types";
+import type { BattleMember, Category, Expense, WinRule } from "../lib/types";
 import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/battles/$id/")({
@@ -160,20 +160,7 @@ function BattleDetail() {
       </section>
 
       {/* Members */}
-      <section className="space-y-2">
-        <h2 className="label">Players</h2>
-        <div className="card divide-y divide-line">
-          {detail.data.members.map((m) => (
-            <div key={m.user_id} className="flex items-center justify-between px-4 py-3">
-              <span className="font-medium">
-                {m.display_name}
-                {m.user_id === me.data?.id && <span className="ml-2 text-xs text-faint">you</span>}
-              </span>
-              <span className="text-xs text-faint">{m.role}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Players id={id} members={detail.data.members} meId={me.data?.id ?? null} />
 
       {/* Past results */}
       {results.data && results.data.length > 0 && (
@@ -201,6 +188,104 @@ function BattleDetail() {
         <LogOut className="size-4" /> Leave battle
       </button>
     </div>
+  );
+}
+
+/**
+ * The players list, and the one place sharing is turned on or off.
+ *
+ * Sharing is per battle by design: you might be happy to open your log to your partner's league and
+ * not to your coworkers'. So the toggle lives here, on the battle, rather than once in Settings.
+ */
+function Players({ id, members, meId }: { id: string; members: BattleMember[]; meId: string | null }) {
+  const qc = useQueryClient();
+  const mine = members.find((m) => m.user_id === meId);
+
+  const setSharing = useMutation({
+    mutationFn: (share: boolean) => api.setSharing(id, share),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["battle", id] }),
+  });
+
+  return (
+    <section className="space-y-2">
+      <h2 className="label">Players</h2>
+      <div className="card divide-y divide-line">
+        {members.map((m) => {
+          const isMe = m.user_id === meId;
+          const label = (
+            <span className="font-medium">
+              {m.display_name}
+              {isMe && <span className="ml-2 text-xs text-faint">you</span>}
+            </span>
+          );
+
+          // Someone else who's opted in: their log is one tap away.
+          if (!isMe && m.share_history) {
+            return (
+              <Link
+                key={m.user_id}
+                to="/battles/$id/members/$userId"
+                params={{ id, userId: m.user_id }}
+                className="flex items-center justify-between px-4 py-3 transition active:bg-surface-2"
+              >
+                {label}
+                <span className="flex items-center gap-1.5 text-xs text-faint">
+                  View log
+                  <ChevronRight className="size-4" />
+                </span>
+              </Link>
+            );
+          }
+
+          return (
+            <div key={m.user_id} className="flex items-center justify-between px-4 py-3">
+              {label}
+              {/* Someone else's private log states itself plainly — it isn't a locked door to rattle. */}
+              {!isMe && <span className="text-xs text-faint">Log private</span>}
+              {isMe && <span className="text-xs text-faint">{m.role}</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      {mine && (
+        <button
+          onClick={() => setSharing.mutate(!mine.share_history)}
+          disabled={setSharing.isPending}
+          className="card flex w-full items-center justify-between px-4 py-3 text-left"
+        >
+          <span>
+            <span className="block text-sm font-medium">Share my log with this battle</span>
+            <span className="block text-xs text-faint">
+              {mine.share_history
+                ? "Players here can see what you spent on, and when — never your notes."
+                : "Off. Only your totals show up in the standings."}
+            </span>
+          </span>
+          <Switch on={mine.share_history} />
+        </button>
+      )}
+    </section>
+  );
+}
+
+function Switch({ on }: { on: boolean }) {
+  return (
+    <span
+      role="switch"
+      aria-checked={on}
+      className={cn(
+        "relative ml-3 h-6 w-10 shrink-0 rounded-full transition",
+        on ? "bg-accent" : "bg-surface-2 ring-1 ring-inset ring-line",
+      )}
+    >
+      <span
+        className={cn(
+          "absolute top-1 size-4 rounded-full bg-white transition-all",
+          on ? "left-[1.375rem]" : "left-1",
+        )}
+      />
+    </span>
   );
 }
 

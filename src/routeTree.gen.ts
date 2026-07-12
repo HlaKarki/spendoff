@@ -20,6 +20,7 @@ import { Route as BattlesIdRouteImport } from './routes/battles.$id'
 import { Route as AuthMagicRouteImport } from './routes/auth.magic'
 import { Route as BattlesIdIndexRouteImport } from './routes/battles.$id.index'
 import { Route as BattlesIdResultsYmRouteImport } from './routes/battles.$id.results.$ym'
+import { Route as BattlesIdMembersUserIdRouteImport } from './routes/battles.$id.members.$userId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -76,6 +77,11 @@ const BattlesIdResultsYmRoute = BattlesIdResultsYmRouteImport.update({
   path: '/results/$ym',
   getParentRoute: () => BattlesIdRoute,
 } as any)
+const BattlesIdMembersUserIdRoute = BattlesIdMembersUserIdRouteImport.update({
+  id: '/members/$userId',
+  path: '/members/$userId',
+  getParentRoute: () => BattlesIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/battles/$id': typeof BattlesIdRouteWithChildren
   '/battles/': typeof BattlesIndexRoute
   '/battles/$id/': typeof BattlesIdIndexRoute
+  '/battles/$id/members/$userId': typeof BattlesIdMembersUserIdRoute
   '/battles/$id/results/$ym': typeof BattlesIdResultsYmRoute
 }
 export interface FileRoutesByTo {
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/auth/magic': typeof AuthMagicRoute
   '/battles': typeof BattlesIndexRoute
   '/battles/$id': typeof BattlesIdIndexRoute
+  '/battles/$id/members/$userId': typeof BattlesIdMembersUserIdRoute
   '/battles/$id/results/$ym': typeof BattlesIdResultsYmRoute
 }
 export interface FileRoutesById {
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/battles/$id': typeof BattlesIdRouteWithChildren
   '/battles/': typeof BattlesIndexRoute
   '/battles/$id/': typeof BattlesIdIndexRoute
+  '/battles/$id/members/$userId': typeof BattlesIdMembersUserIdRoute
   '/battles/$id/results/$ym': typeof BattlesIdResultsYmRoute
 }
 export interface FileRouteTypes {
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/battles/$id'
     | '/battles/'
     | '/battles/$id/'
+    | '/battles/$id/members/$userId'
     | '/battles/$id/results/$ym'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/auth/magic'
     | '/battles'
     | '/battles/$id'
+    | '/battles/$id/members/$userId'
     | '/battles/$id/results/$ym'
   id:
     | '__root__'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/battles/$id'
     | '/battles/'
     | '/battles/$id/'
+    | '/battles/$id/members/$userId'
     | '/battles/$id/results/$ym'
   fileRoutesById: FileRoutesById
 }
@@ -248,16 +260,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BattlesIdResultsYmRouteImport
       parentRoute: typeof BattlesIdRoute
     }
+    '/battles/$id/members/$userId': {
+      id: '/battles/$id/members/$userId'
+      path: '/members/$userId'
+      fullPath: '/battles/$id/members/$userId'
+      preLoaderRoute: typeof BattlesIdMembersUserIdRouteImport
+      parentRoute: typeof BattlesIdRoute
+    }
   }
 }
 
 interface BattlesIdRouteChildren {
   BattlesIdIndexRoute: typeof BattlesIdIndexRoute
+  BattlesIdMembersUserIdRoute: typeof BattlesIdMembersUserIdRoute
   BattlesIdResultsYmRoute: typeof BattlesIdResultsYmRoute
 }
 
 const BattlesIdRouteChildren: BattlesIdRouteChildren = {
   BattlesIdIndexRoute: BattlesIdIndexRoute,
+  BattlesIdMembersUserIdRoute: BattlesIdMembersUserIdRoute,
   BattlesIdResultsYmRoute: BattlesIdResultsYmRoute,
 }
 

@@ -5,6 +5,7 @@ import type {
   Category,
   Currency,
   Expense,
+  MemberHistory,
   MonthlyResult,
   RecurringExpense,
   StandingsResult,
@@ -105,6 +106,13 @@ export const api = {
     apiFetch<{ ok: boolean }>(`/battles/${id}/settings/${ym}`, { method: "PUT", json }),
   setBudget: (id: string, ym: string, json: { budget_cents: number }) =>
     apiFetch<{ ok: boolean }>(`/battles/${id}/budget/${ym}`, { method: "PUT", json }),
+
+  // ── Shared log history ────────────────────────────────────────────────────
+  // Sharing is opt-in per battle: this only ever toggles the caller's own membership row.
+  setSharing: (id: string, share: boolean) =>
+    apiFetch<{ ok: boolean }>(`/battles/${id}/sharing`, { method: "PATCH", json: { share_history: share } }),
+  memberHistory: (id: string, userId: string, ym: string) =>
+    apiFetch<MemberHistory>(`/battles/${id}/members/${userId}/history?year_month=${ym}`),
 
   // ── Expenses ──────────────────────────────────────────────────────────────
   // `currency` omitted means "spent in my base currency" — the common case, and the only one that

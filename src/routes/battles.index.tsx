@@ -4,9 +4,10 @@ import { ChevronRight, Plus, Swords, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
+import { StandingsRows } from "../components/Standings";
 import { api, ApiError } from "../lib/api";
-import { resolveCurrency } from "../lib/format";
-import { useBaseCurrency, useBattles, useCurrencies } from "../lib/queries";
+import { formatMonth, resolveCurrency } from "../lib/format";
+import { useBaseCurrency, useBattles, useCurrencies, useMe, useStandings } from "../lib/queries";
 
 export const Route = createFileRoute("/battles/")({
   component: () => (
@@ -22,6 +23,7 @@ type Sheet = "none" | "create" | "join";
 
 function BattlesScreen() {
   const battles = useBattles();
+  const me = useMe();
   const [sheet, setSheet] = useState<Sheet>("none");
 
   return (
@@ -39,6 +41,8 @@ function BattlesScreen() {
         </button>
       </div>
 
+      {battles.isLoading && <div className="h-32 animate-pulse rounded-2xl bg-surface" />}
+
       {battles.data?.length === 0 && (
         <div className="card flex flex-col items-center px-6 py-12 text-center">
           <Swords className="size-10 text-accent" />
@@ -47,24 +51,65 @@ function BattlesScreen() {
         </div>
       )}
 
-      <div className="space-y-3">
+      {/* The digest: this tab absorbed the old dashboard, so each battle shows its month's
+          standings right here — one tap deep is reserved for the full slip. */}
+      <div className="space-y-4">
         {battles.data?.map((b) => (
-          <Link key={b.id} to="/battles/$id" params={{ id: b.id }} className="block">
-            <div className="card flex items-center justify-between px-4 py-4 transition active:scale-[0.99]">
-              <div>
-                <div className="font-semibold">{b.name}</div>
-                <div className="text-xs text-faint">
-                  {b.member_count} {b.member_count === 1 ? "player" : "players"} · {b.role}
-                </div>
-              </div>
-              <ChevronRight className="size-5 text-faint" />
-            </div>
-          </Link>
+          <BattleStandingsCard
+            key={b.id}
+            id={b.id}
+            name={b.name}
+            currency={b.currency}
+            memberCount={b.member_count}
+            meId={me.data?.id ?? null}
+          />
         ))}
       </div>
 
       {sheet !== "none" && <Sheet kind={sheet} onClose={() => setSheet("none")} />}
     </div>
+  );
+}
+
+function BattleStandingsCard({
+  id,
+  name,
+  currency,
+  memberCount,
+  meId,
+}: {
+  id: string;
+  name: string;
+  currency: string;
+  memberCount: number;
+  meId: string | null;
+}) {
+  const standings = useStandings(id);
+
+  return (
+    <Link to="/battles/$id" params={{ id }} className="block">
+      <div className="card overflow-hidden transition active:scale-[0.99]">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div>
+            <div className="font-semibold">{name}</div>
+            <div className="text-xs text-faint">
+              {standings.data ? formatMonth(standings.data.year_month) : "—"} · {memberCount}{" "}
+              {memberCount === 1 ? "player" : "players"}
+            </div>
+          </div>
+          <ChevronRight className="size-5 text-faint" />
+        </div>
+        <div className="p-4">
+          {standings.isLoading ? (
+            <div className="h-20 animate-pulse rounded-xl bg-surface-2" />
+          ) : standings.data ? (
+            <StandingsRows snapshot={standings.data.result} meId={meId} currency={currency} />
+          ) : (
+            <p className="text-sm text-faint">Couldn't load standings.</p>
+          )}
+        </div>
+      </div>
+    </Link>
   );
 }
 

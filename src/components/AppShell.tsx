@@ -2,14 +2,15 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { useMe } from "../lib/queries";
 import { cn } from "../lib/utils";
-import { BarChart3, Home, Plus, Settings, Swords } from "./icons";
+import { BarChart3, Plus, Settings, Swords } from "./icons";
 
+/* Counter IA (HLA-147): four tabs, no center accent button — logging IS home,
+ * so the register needs no shortcut. */
 const TABS = [
-  { to: "/", label: "Home", icon: Home, exact: true, accent: false },
-  { to: "/battles", label: "Battles", icon: Swords, exact: false, accent: false },
-  { to: "/log", label: "Log", icon: Plus, exact: false, accent: true },
-  { to: "/analytics", label: "Stats", icon: BarChart3, exact: false, accent: false },
-  { to: "/settings", label: "Settings", icon: Settings, exact: false, accent: false },
+  { to: "/", label: "Today", icon: Plus, exact: true },
+  { to: "/battles", label: "Battles", icon: Swords, exact: false },
+  { to: "/analytics", label: "Stats", icon: BarChart3, exact: false },
+  { to: "/settings", label: "Settings", icon: Settings, exact: false },
 ] as const;
 
 function Splash() {
@@ -55,15 +56,6 @@ function BottomNav() {
           {TABS.map((item) => {
             const active = item.exact ? path === item.to : path.startsWith(item.to);
             const Icon = item.icon;
-            if (item.accent) {
-              return (
-                <Link key={item.to} to={item.to} className="flex flex-col items-center gap-1" aria-label="Log a spend">
-                  <span className="flex size-11 items-center justify-center rounded-2xl bg-accent text-accent-fg shadow-lg shadow-accent/20 transition active:scale-95">
-                    <Icon className="size-6" strokeWidth={2.8} />
-                  </span>
-                </Link>
-              );
-            }
             return (
               <Link
                 key={item.to}

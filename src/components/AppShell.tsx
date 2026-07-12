@@ -52,7 +52,7 @@ function BottomNav() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30">
       <div className="mx-auto max-w-lg px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="flex items-center justify-around rounded-2xl border border-line bg-surface/95 px-2 py-2 backdrop-blur">
+        <div className="flex items-center justify-around rounded-2xl border border-line bg-paper/95 px-2 py-2 backdrop-blur">
           {TABS.map((item) => {
             const active = item.exact ? path === item.to : path.startsWith(item.to);
             const Icon = item.icon;
@@ -61,7 +61,7 @@ function BottomNav() {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex w-16 flex-col items-center gap-1 py-1 text-[10px] font-semibold transition",
+                  "flex w-16 flex-col items-center gap-1 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide transition",
                   active ? "text-accent" : "text-faint hover:text-muted",
                 )}
               >

@@ -46,10 +46,10 @@ function BattlePulse({ battle, meId }: { battle: Battle; meId: string | null }) 
     <Link
       to="/battles/$id"
       params={{ id: battle.id }}
-      className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-line bg-surface px-3.5 py-2 text-xs"
+      className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-rule bg-paper-2 px-3.5 py-2 text-xs"
     >
       <span className="min-w-0 truncate text-muted">
-        <span className="font-mono font-bold uppercase text-fg">{battle.name}</span> · {status}
+        <span className="font-mono font-bold uppercase text-ink">{battle.name}</span> · {status}
       </span>
       <span className="shrink-0 font-mono font-bold text-accent">VIEW →</span>
     </Link>

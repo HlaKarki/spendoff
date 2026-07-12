@@ -39,7 +39,7 @@ test("sign up, log an expense, see it confirmed", async ({ page }) => {
   // ── Log an expense ────────────────────────────────────────────────────────
   // Counter IA: the register is the home screen now; /log only redirects here.
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Log a spend" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Log expense" })).toBeVisible();
 
   // Pick a category, then key in $5.00 (press 5, 0, 0 → cents 500).
   await page.getByRole("button", { name: "Food" }).click();
@@ -48,7 +48,7 @@ test("sign up, log an expense, see it confirmed", async ({ page }) => {
   }
   await expect(page.getByText("$5.00")).toBeVisible();
 
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByRole("button", { name: "Log expense", exact: true }).click();
 
   // ── See it confirmed ──────────────────────────────────────────────────────
   // The save toast is the end-to-end proof: it only appears after logExpense → the backend sync

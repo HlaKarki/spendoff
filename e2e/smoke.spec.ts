@@ -8,8 +8,13 @@ test("sign up, log an expense, see it confirmed", async ({ page }) => {
 
   // ── Sign up (magic link) ──────────────────────────────────────────────────
   await page.goto("/onboard");
-  // Onboard defaults to "sign in"; switch to the create tab so the name field appears.
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  // Onboard defaults to "sign in"; switch to the create tab so the name field appears. The click
+  // retries until the tab actually switches: the SSR'd button is visible before React hydrates,
+  // and a click landing in that window is silently dead.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(page.getByPlaceholder("e.g. Alex")).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
 
   await page.getByPlaceholder("e.g. Alex").fill("Smoke Tester");
   await page.getByPlaceholder("you@email.com").fill(email);
@@ -32,7 +37,8 @@ test("sign up, log an expense, see it confirmed", async ({ page }) => {
     .toBe(true);
 
   // ── Log an expense ────────────────────────────────────────────────────────
-  await page.goto("/log");
+  // Counter IA: the register is the home screen now; /log only redirects here.
+  await page.goto("/");
   await expect(page.getByRole("heading", { name: "Log a spend" })).toBeVisible();
 
   // Pick a category, then key in $5.00 (press 5, 0, 0 → cents 500).

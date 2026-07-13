@@ -14,6 +14,9 @@ export const env = createEnv({
 
   client: {
     VITE_APP_TITLE: z.string().min(1).optional(),
+    /** PostHog project API key (public, safe in the bundle). Analytics is off when unset. */
+    VITE_POSTHOG_KEY: z.string().startsWith("phc_").optional(),
+    VITE_POSTHOG_HOST: z.string().url().optional(),
   },
 
   /**

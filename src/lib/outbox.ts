@@ -1,4 +1,5 @@
 import { openDB, type IDBPDatabase } from "idb";
+import { track } from "../integrations/posthog";
 import { api } from "./api";
 
 const DB_NAME = "spendoff";
@@ -101,5 +102,8 @@ export async function logExpense(item: Omit<OutboxItem, "queued_at">): Promise<{
   }
 
   const res = await flushOutbox();
-  return { online: res.synced > 0 || res.remaining === 0 };
+  const online = res.synced > 0 || res.remaining === 0;
+  // Metadata only — never the amount or note; this is analytics, not the ledger.
+  track("expense_logged", { category_id: item.category_id, online });
+  return { online };
 }

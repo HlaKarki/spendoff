@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Delete, Check, Coins, Repeat, CalendarDays } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
@@ -112,18 +112,6 @@ function TodayScreen() {
   const yesterday = shiftDay(today, -1);
   const quickDays = yesterday >= range.min ? [today, yesterday] : [today];
   const isCustomDay = !quickDays.includes(day);
-
-  const dayInput = useRef<HTMLInputElement>(null);
-
-  function openDayPicker() {
-    const el = dayInput.current;
-    if (!el) return;
-    // showPicker() is the only way in: a date field opens its calendar from the indicator icon, which
-    // the chip covers. Older browsers without it fall back to focusing the field, where the arrow
-    // keys still change the date.
-    if (typeof el.showPicker === "function") el.showPicker();
-    else el.focus();
-  }
 
   function press(k: (typeof KEYS)[number]) {
     if (k === "del") return setCents((c) => Math.floor(c / 10));
@@ -238,12 +226,6 @@ function TodayScreen() {
             </button>
           ))}
           <label
-            // preventDefault stops the label from *also* activating the input: browsers that open the
-            // picker on label activation would otherwise open it twice in one gesture.
-            onClick={(e) => {
-              e.preventDefault();
-              openDayPicker();
-            }}
             className={cn(
               "relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-within:ring-2 focus-within:ring-accent/40",
               isCustomDay ? "border-accent bg-accent/10 text-accent" : "border-rule bg-paper text-muted",
@@ -251,19 +233,27 @@ function TodayScreen() {
           >
             <CalendarDays className="size-3.5" />
             {isCustomDay ? relativeDayKey(day, tz) : "Another day"}
-            {/* The native picker owns the calendar UI and the min/max clamp. It has to stay rendered
-                (opacity, not `hidden`) for showPicker() to be allowed to open it, but it takes no
-                clicks of its own: clicking a date field's text doesn't open anything, and the one part
-                that would — the indicator icon — is invisible under the chip. The label opens it. */}
+            {/* The native picker owns the calendar UI and the min/max clamp. The invisible input
+                covers the chip and takes the tap itself (HLA-158): on mobile that alone opens the
+                native picker, which is the only path that reliably works there. Desktop date inputs
+                only open from their indicator icon (hidden under the chip), so onClick also asks via
+                showPicker() — guarded, because a browser that just opened the picker natively
+                refuses the second ask. */}
             <input
-              ref={dayInput}
               type="date"
               aria-label="Day this was spent"
               value={day}
               min={range.min}
               max={range.max}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker?.();
+                } catch {
+                  // Native focus already opened the picker (or the browser refused): nothing to do.
+                }
+              }}
               onChange={(e) => e.target.value && setDayEdit(e.target.value)}
-              className="pointer-events-none absolute inset-0 opacity-0"
+              className="absolute inset-0 cursor-pointer opacity-0"
             />
           </label>
 

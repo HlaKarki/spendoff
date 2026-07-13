@@ -2,7 +2,10 @@ import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/reac
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 
+import { useEffect } from "react";
+
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
+import { initPostHog } from "../integrations/posthog";
 import { SwRegister } from "../components/SwRegister";
 
 import appCss from "../styles.css?url";
@@ -78,6 +81,10 @@ const JSON_LD = {
 };
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    void initPostHog();
+  }, []);
+
   return (
     <html lang="en">
       <head>

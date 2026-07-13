@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { identify } from "../integrations/posthog";
 import { useMe } from "../lib/queries";
 import { cn } from "../lib/utils";
 import { BarChart3, Plus, Settings, Swords } from "./icons";
@@ -25,6 +26,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const me = useMe();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (me.data) identify(me.data.id, { display_name: me.data.display_name });
+  }, [me.data]);
 
   useEffect(() => {
     if (me.data === null) {

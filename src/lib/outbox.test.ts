@@ -117,7 +117,9 @@ describe("flushOutbox", () => {
     const res = await outbox.flushOutbox();
 
     expect(res).toEqual({ synced: 0, remaining: 2 });
-    expect((await outbox.pending()).map((i) => i.client_id).sort()).toEqual(["a", "b"]);
+    const pendingIds = (await outbox.pending()).map((i) => i.client_id);
+    expect(pendingIds).toHaveLength(2);
+    expect(pendingIds).toEqual(expect.arrayContaining(["a", "b"]));
   });
 
   test("retry after a failure then a success drains cleanly", async () => {

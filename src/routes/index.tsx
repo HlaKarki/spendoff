@@ -4,7 +4,7 @@ import { Delete, Check, Coins, Repeat, CalendarDays } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
-import { CategoryIcon } from "../components/icons";
+import { CategoryPicker } from "../components/CategoryPicker";
 import { PulseLine } from "../components/PulseLine";
 import { Button } from "../components/ui/button";
 import { ErrorNote } from "../components/ui/error-note";
@@ -309,25 +309,13 @@ function TodayScreen() {
         </div>
 
         {/* Categories */}
-        <div className="mb-3 grid grid-cols-5 gap-2">
-          {categories.data?.map((c) => {
-            const active = categoryId === c.id;
-            return (
-              <button
-                key={c.id}
-                onClick={() => setCategoryId(c.id)}
-                aria-pressed={active}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-lg border py-2.5 transition",
-                  active ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-muted hover:bg-paper-2",
-                )}
-              >
-                <CategoryIcon name={c.icon} className="size-5" />
-                <span className="text-[9px] font-semibold leading-none">{c.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <CategoryPicker
+          className="mb-3"
+          categories={categories.data}
+          value={categoryId}
+          onChange={setCategoryId}
+          aria-label="Expense category"
+        />
 
         {/* Note */}
         {showNote ? (

@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Copy, LogOut, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "../components/AppShell";
+import { CategoryPicker } from "../components/CategoryPicker";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { StandingsRows } from "../components/Standings";
@@ -127,8 +128,8 @@ function BattleDetail() {
         ) : (
           <div className="h-24 animate-pulse rounded-lg bg-paper-2" />
         )}
-        {standings.data?.result.callouts.slice(0, 1).map((c, i) => (
-          <p key={i} className="mt-2 rounded-lg bg-paper-2 px-3 py-2 text-sm text-muted">
+        {standings.data?.result.callouts.slice(0, 1).map((c) => (
+          <p key={c} className="mt-2 rounded-lg bg-paper-2 px-3 py-2 text-sm text-muted">
             {c}
           </p>
         ))}
@@ -604,24 +605,12 @@ function ExpenseRow({
           {expense.rate_date ? ` on ${expense.rate_date}` : ""}
         </p>
       )}
-      <div className="grid grid-cols-5 gap-2">
-        {categories.data?.map((c) => {
-          const active = categoryId === c.id;
-          return (
-            <button
-              key={c.id}
-              onClick={() => setCategoryId(c.id)}
-              className={cn(
-                "flex flex-col items-center gap-1 rounded-lg border py-2 transition",
-                active ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-muted",
-              )}
-            >
-              <CategoryIcon name={c.icon} className="size-4" />
-              <span className="text-[9px] font-semibold leading-none">{c.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <CategoryPicker
+        categories={categories.data}
+        value={categoryId}
+        onChange={setCategoryId}
+        aria-label="Expense category"
+      />
       <Input
         className="py-2"
         value={note}

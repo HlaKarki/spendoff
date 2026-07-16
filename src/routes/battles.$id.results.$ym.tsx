@@ -78,8 +78,8 @@ function Showdown() {
         <Tape className="pt-5">
           <TapeLabel>The breakdown</TapeLabel>
           <div className="mt-2 space-y-2">
-            {snap.callouts.map((c, i) => (
-              <p key={i} className="rounded-lg bg-paper-2 px-3.5 py-2.5 text-sm text-ink">
+            {snap.callouts.map((c) => (
+              <p key={c} className="rounded-lg bg-paper-2 px-3.5 py-2.5 text-sm text-ink">
                 {c}
               </p>
             ))}

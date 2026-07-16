@@ -43,9 +43,9 @@ test("sign up, log an expense, see it confirmed", async ({ page }) => {
 
   // Pick a category, then key in $5.00 (press 5, 0, 0 → cents 500).
   await page.getByRole("button", { name: "Food" }).click();
-  for (const digit of ["5", "0", "0"]) {
-    await page.getByRole("button", { name: digit, exact: true }).click();
-  }
+  await page.getByRole("button", { name: "5", exact: true }).click();
+  await page.getByRole("button", { name: "0", exact: true }).click();
+  await page.getByRole("button", { name: "0", exact: true }).click();
   await expect(page.getByText("$5.00")).toBeVisible();
 
   await page.getByRole("button", { name: "Log expense", exact: true }).click();

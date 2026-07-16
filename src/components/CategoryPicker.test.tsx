@@ -32,13 +32,12 @@ describe("CategoryPicker", () => {
     expect(onChange).toHaveBeenCalledWith("drinks");
   });
 
-  it("uses the narrow-phone four-column layout before expanding to five", () => {
+  it("preserves the original dense five-column layout", () => {
     render(<CategoryPicker categories={categories} value={null} onChange={() => undefined} />);
     const group = screen.getByRole("group", { name: "Choose a category" });
 
-    expect(group.className).toContain("grid-cols-4");
-    expect(group.className).toContain("sm:grid-cols-5");
-    expect(screen.getByText("Entertainment").className).toContain("text-[11px]");
-    expect(screen.getByText("Entertainment").className).toContain("break-words");
+    expect(group.className).toContain("grid-cols-5");
+    expect(screen.getByText("Entertainment").className).toContain("text-[9px]");
+    expect(screen.getByText("Entertainment").className).toContain("leading-none");
   });
 });

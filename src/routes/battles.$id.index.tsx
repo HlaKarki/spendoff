@@ -606,6 +606,7 @@ function ExpenseRow({
         </p>
       )}
       <CategoryPicker
+        compact
         categories={categories.data}
         value={categoryId}
         onChange={setCategoryId}

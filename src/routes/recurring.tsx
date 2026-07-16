@@ -135,6 +135,7 @@ function AddRecurring() {
         </select>
       </div>
       <CategoryPicker
+        compact
         categories={categories.data}
         value={categoryId}
         onChange={setCategoryId}
@@ -241,6 +242,7 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
         placeholder="0.00"
       />
       <CategoryPicker
+        compact
         categories={categories.data}
         value={categoryId}
         onChange={setCategoryId}

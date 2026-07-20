@@ -9,6 +9,7 @@ import type {
   MonthlyResult,
   RecurringExpense,
   StandingsResult,
+  SyncSkipped,
   User,
   WinRule,
 } from "./types";
@@ -142,7 +143,11 @@ export const api = {
       note?: string | null;
       spent_at?: string;
     }>,
-  ) => apiFetch<{ synced: number; expenses: Expense[] }>("/expenses/sync", { method: "POST", json: { items } }),
+  ) =>
+    apiFetch<{ synced: number; expenses: Expense[]; skipped?: SyncSkipped[] }>("/expenses/sync", {
+      method: "POST",
+      json: { items },
+    }),
   listExpenses: (params?: {
     year_month?: string;
     day?: string;

@@ -75,18 +75,33 @@ export async function flushOutbox(): Promise<{ synced: number; remaining: number
         spent_at: i.spent_at,
       })),
     );
-    // Drop only what the server confirmed it saved. It may skip items it can't accept (e.g. an
-    // unknown category) or can't yet price (a foreign currency while the rate feed is behind) and
-    // echo back the rest; removing an unconfirmed item would lose it silently. A skipped item stays
-    // queued and rides along on the next flush.
+    // Drop what the server saved — and, separately, what it says it will never accept.
+    //
     // Read defensively: only `client_id` is load-bearing here, and an echo that isn't an array at
     // all must mean "nothing confirmed", not a TypeError. Thrown, it would land in the catch below
     // and be reported as "you're offline" — a permanent sync banner over a server that had in fact
     // saved every row.
     const echoed = Array.isArray(res?.expenses) ? res.expenses : [];
     const confirmed = new Set(echoed.map((e) => e.client_id));
+
+    // `skipped` (HLA-194) is the server telling us why an item is missing from the echo. Only an
+    // explicit `retryable: false` drops anything: a server that doesn't send the field, or is
+    // unsure, leaves the item queued — "not told" has to keep meaning "keep it", because that's
+    // the reading that can't lose an expense.
+    //
+    // Before this existed, an item the server could never accept (an unknown category) was
+    // indistinguishable from one it couldn't price yet, so it rode along on every flush forever
+    // and kept re-firing Background Sync behind it (HLA-191).
+    const skipped = Array.isArray(res?.skipped) ? res.skipped : [];
+    const dropped = skipped.filter((s) => s?.retryable === false);
+
     for (const i of items) if (confirmed.has(i.client_id)) await removeItem(i.client_id);
-    return { synced: confirmed.size, remaining: items.length - confirmed.size };
+    await Promise.all(dropped.map((s) => removeItem(s.client_id)));
+    // No UI for this yet — but a silently discarded expense must at least be visible somewhere.
+    for (const s of dropped) track("expense_dropped", { reason: s.reason });
+
+    const settled = confirmed.size + dropped.length;
+    return { synced: confirmed.size, remaining: items.length - settled };
   } catch {
     return { synced: 0, remaining: items.length };
   }

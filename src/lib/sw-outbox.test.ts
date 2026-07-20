@@ -24,6 +24,15 @@ describe("public/sw.js mirrors the outbox contract", () => {
     expect(outbox).toContain(`${field}: i.${field}`);
   });
 
+  // The fourth thing the two must agree on: dropping permanently-rejected items, and dropping
+  // ONLY those. A sw.js that kept them would keep re-firing Background Sync over a dead row; one
+  // that dropped every skip would throw away items the server merely couldn't price yet.
+  test("drops permanently-rejected items, and only those", () => {
+    expect(sw).toContain("retryable === false");
+    expect(outbox).toContain("retryable === false");
+    expect(sw).toContain("dropped.map((s) => tx.store.delete(s.client_id))");
+  });
+
   test("deletes only the client_ids the server confirmed", () => {
     expect(sw).toContain("confirmed.has(i.client_id)");
     // The old bug: clearing the store on a bare 200, discarding items the server skipped.

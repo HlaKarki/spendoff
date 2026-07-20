@@ -117,7 +117,9 @@ describe("flushOutbox", () => {
     const res = await outbox.flushOutbox();
 
     expect(res).toEqual({ synced: 0, remaining: 2 });
-    expect((await outbox.pending()).map((i) => i.client_id).sort()).toEqual(["a", "b"]);
+    const pendingIds = (await outbox.pending()).map((i) => i.client_id);
+    expect(pendingIds).toHaveLength(2);
+    expect(pendingIds).toEqual(expect.arrayContaining(["a", "b"]));
   });
 
   test("retry after a failure then a success drains cleanly", async () => {
@@ -129,6 +131,51 @@ describe("flushOutbox", () => {
     const res = await outbox.flushOutbox();
     expect(res.synced).toBe(1);
     expect(await outbox.pending()).toHaveLength(0);
+  });
+
+  // The other half of "retain what wasn't confirmed": an item the server says it can NEVER accept
+  // has to leave the queue, or it rides along on every flush for the life of the install and keeps
+  // re-firing Background Sync behind it (HLA-191, fixed by the `skipped` wire field in HLA-194).
+  test("an item the server will never accept is dropped, not retried forever", async () => {
+    await outbox.enqueue({ ...item("a"), queued_at: "t" });
+    await outbox.enqueue({ ...item("poison"), queued_at: "t" });
+    syncExpenses.mockResolvedValue({
+      synced: 1,
+      expenses: [saved("a")],
+      skipped: [{ client_id: "poison", reason: "InvalidCategory", retryable: false, message: "Unknown category." }],
+    });
+
+    const res = await outbox.flushOutbox();
+
+    expect(res).toEqual({ synced: 1, remaining: 0 }); // nothing left to retry
+    expect(await outbox.pending()).toHaveLength(0);
+  });
+
+  test("a retryable skip still stays queued — only a permanent one is dropped", async () => {
+    await outbox.enqueue({ ...item("a"), currency: "EUR", queued_at: "t" });
+    syncExpenses.mockResolvedValue({
+      synced: 0,
+      expenses: [],
+      skipped: [{ client_id: "a", reason: "RatesUnavailable", retryable: true, message: "No rate yet." }],
+    });
+
+    const res = await outbox.flushOutbox();
+
+    expect(res).toEqual({ synced: 0, remaining: 1 });
+    expect((await outbox.pending()).map((i) => i.client_id)).toEqual(["a"]);
+  });
+
+  test("a server that says nothing about an item keeps it — silence is never permission to drop", async () => {
+    // The tolerant reading, and the one that can't lose an expense: an older server sends no
+    // `skipped` at all, and a missing item is exactly the old "stays queued" case.
+    await outbox.enqueue({ ...item("a"), queued_at: "t" });
+    await outbox.enqueue({ ...item("b"), queued_at: "t" });
+    syncExpenses.mockResolvedValue({ synced: 1, expenses: [saved("a")] }); // no `skipped` key
+
+    const res = await outbox.flushOutbox();
+
+    expect(res).toEqual({ synced: 1, remaining: 1 });
+    expect((await outbox.pending()).map((i) => i.client_id)).toEqual(["b"]);
   });
 
   // Data-integrity edge: the server skips items it can't accept (e.g. an unknown category) and

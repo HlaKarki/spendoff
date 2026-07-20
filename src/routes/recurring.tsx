@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { AppShell } from "../components/AppShell";
+import { CategoryPicker } from "../components/CategoryPicker";
 import { ClientOnly } from "../components/ClientOnly";
 import { CategoryIcon } from "../components/icons";
 import { Button } from "../components/ui/button";
@@ -133,22 +134,13 @@ function AddRecurring() {
           ))}
         </select>
       </div>
-      <div className="grid grid-cols-5 gap-2">
-        {categories.data?.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setCategoryId(c.id)}
-            aria-pressed={categoryId === c.id}
-            className={cn(
-              "flex flex-col items-center gap-1 rounded-lg border py-2 transition",
-              categoryId === c.id ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-muted",
-            )}
-          >
-            <CategoryIcon name={c.icon} className="size-4" />
-            <span className="text-[9px] font-semibold leading-none">{c.label}</span>
-          </button>
-        ))}
-      </div>
+      <CategoryPicker
+        compact
+        categories={categories.data}
+        value={categoryId}
+        onChange={setCategoryId}
+        aria-label="Recurring expense category"
+      />
       <label className="flex items-center justify-between gap-2 text-sm text-faint">
         Day of month
         <Input
@@ -249,22 +241,13 @@ function RecurringRow({ rule }: { rule: RecurringExpense }) {
         onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
         placeholder="0.00"
       />
-      <div className="grid grid-cols-5 gap-2">
-        {categories.data?.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setCategoryId(c.id)}
-            aria-pressed={categoryId === c.id}
-            className={cn(
-              "flex flex-col items-center gap-1 rounded-lg border py-2 transition",
-              categoryId === c.id ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-muted",
-            )}
-          >
-            <CategoryIcon name={c.icon} className="size-4" />
-            <span className="text-[9px] font-semibold leading-none">{c.label}</span>
-          </button>
-        ))}
-      </div>
+      <CategoryPicker
+        compact
+        categories={categories.data}
+        value={categoryId}
+        onChange={setCategoryId}
+        aria-label="Recurring expense category"
+      />
       <label className="flex items-center justify-between gap-2 text-sm text-faint">
         Day of month
         <Input

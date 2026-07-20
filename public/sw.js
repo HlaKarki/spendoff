@@ -6,6 +6,10 @@ importScripts("https://cdn.jsdelivr.net/npm/idb@8/build/umd.js");
 const DB_NAME = "spendoff";
 const STORE = "outbox";
 const SYNC_URL = "/api/v1/spendoff/expenses/sync";
+// Must equal DB_VERSION in src/lib/outbox.ts. Opening at a LOWER version than the one on disk
+// doesn't fall back — IndexedDB rejects with VersionError, which killed this whole handler between
+// fbb2542 (which bumped the app to 2) and HLA-191. `sw-outbox.test.ts` now pins the two together.
+const DB_VERSION = 2;
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
@@ -59,7 +63,7 @@ self.addEventListener("sync", (event) => {
  *      Clearing the store on a bare 200 throws the skipped ones away.
  */
 async function flushOutbox() {
-  const db = await self.idb.openDB(DB_NAME, 1);
+  const db = await self.idb.openDB(DB_NAME, DB_VERSION);
   let items;
   try {
     items = await db.getAll(STORE);
@@ -87,11 +91,17 @@ async function flushOutbox() {
 
   const body = await res.json();
   const confirmed = new Set((body.expenses || []).map((e) => e.client_id));
+  // Mirrors rule 3 in outbox.ts: an explicit `retryable: false` is the server saying this item can
+  // never be accepted, so drop it rather than re-send it on every sync forever. Anything else —
+  // including a server that doesn't send `skipped` at all — stays queued.
+  const dropped = (body.skipped || []).filter((s) => s && s.retryable === false);
   const tx = db.transaction(STORE, "readwrite");
   for (const i of items) if (confirmed.has(i.client_id)) await tx.store.delete(i.client_id);
+  await Promise.all(dropped.map((s) => tx.store.delete(s.client_id)));
   await tx.done;
 
-  // A skipped item stays queued. Ask for another sync so it isn't stranded until the next log —
-  // by then the category may exist, or the rate feed may have caught up.
-  if (confirmed.size < items.length) throw new Error("partial sync"); // reject → browser retries later
+  // A still-queued item is one that might yet succeed. Ask for another sync so it isn't stranded
+  // until the next log — by then the rate feed may have caught up. Items we just dropped don't
+  // count: retrying for their sake is the loop this whole field exists to end.
+  if (confirmed.size + dropped.length < items.length) throw new Error("partial sync"); // reject → retry
 }

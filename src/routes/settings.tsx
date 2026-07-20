@@ -4,6 +4,7 @@ import { Bell, BellOff, ChevronRight, LogOut, Repeat } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
+import { reset } from "../integrations/posthog";
 import { Button } from "../components/ui/button";
 import { RuleLine } from "../components/ui/rule-line";
 import { SwitchIndicator } from "../components/ui/switch";
@@ -81,6 +82,7 @@ function Settings() {
 
   async function signOut() {
     await api.logout();
+    reset();
     await qc.invalidateQueries({ queryKey: ["me"] });
     navigate({ to: "/onboard", search: { redirect: "/" } });
   }

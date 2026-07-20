@@ -29,3 +29,8 @@ export function identify(id: string, props?: Record<string, unknown>): void {
 export function track(event: string, props?: Record<string, unknown>): void {
   client?.capture(event, props);
 }
+
+/** On sign-out: unlink this device from the person so the next account isn't attributed to them. */
+export function reset(): void {
+  client?.reset();
+}

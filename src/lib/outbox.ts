@@ -23,7 +23,7 @@ export interface OutboxItem {
 // v2 adds `currency` to queued items. No migration step is needed — the field is optional and old
 // items are already correct without it (see OutboxItem.currency) — but the version bump is still
 // required so a browser holding a v1 database opens it rather than failing the version check.
-const DB_VERSION = 2;
+export const DB_VERSION = 2;
 
 let dbp: Promise<IDBPDatabase> | null = null;
 function db() {
@@ -79,7 +79,12 @@ export async function flushOutbox(): Promise<{ synced: number; remaining: number
     // unknown category) or can't yet price (a foreign currency while the rate feed is behind) and
     // echo back the rest; removing an unconfirmed item would lose it silently. A skipped item stays
     // queued and rides along on the next flush.
-    const confirmed = new Set(res.expenses.map((e) => e.client_id));
+    // Read defensively: only `client_id` is load-bearing here, and an echo that isn't an array at
+    // all must mean "nothing confirmed", not a TypeError. Thrown, it would land in the catch below
+    // and be reported as "you're offline" — a permanent sync banner over a server that had in fact
+    // saved every row.
+    const echoed = Array.isArray(res?.expenses) ? res.expenses : [];
+    const confirmed = new Set(echoed.map((e) => e.client_id));
     for (const i of items) if (confirmed.has(i.client_id)) await removeItem(i.client_id);
     return { synced: confirmed.size, remaining: items.length - confirmed.size };
   } catch {

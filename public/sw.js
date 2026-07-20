@@ -6,6 +6,10 @@ importScripts("https://cdn.jsdelivr.net/npm/idb@8/build/umd.js");
 const DB_NAME = "spendoff";
 const STORE = "outbox";
 const SYNC_URL = "/api/v1/spendoff/expenses/sync";
+// Must equal DB_VERSION in src/lib/outbox.ts. Opening at a LOWER version than the one on disk
+// doesn't fall back — IndexedDB rejects with VersionError, which killed this whole handler between
+// fbb2542 (which bumped the app to 2) and HLA-191. `sw-outbox.test.ts` now pins the two together.
+const DB_VERSION = 2;
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
@@ -59,7 +63,7 @@ self.addEventListener("sync", (event) => {
  *      Clearing the store on a bare 200 throws the skipped ones away.
  */
 async function flushOutbox() {
-  const db = await self.idb.openDB(DB_NAME, 1);
+  const db = await self.idb.openDB(DB_NAME, DB_VERSION);
   let items;
   try {
     items = await db.getAll(STORE);

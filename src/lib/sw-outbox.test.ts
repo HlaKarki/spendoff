@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { SYNC_FIELDS } from "./outbox";
+import { DB_VERSION, SYNC_FIELDS } from "./outbox";
 
 /**
  * `public/sw.js` re-implements `flushOutbox()` by hand: it lives outside the bundle and outside
@@ -24,6 +24,15 @@ describe("public/sw.js mirrors the outbox contract", () => {
     expect(outbox).toContain(`${field}: i.${field}`);
   });
 
+  // The fourth thing the two must agree on: dropping permanently-rejected items, and dropping
+  // ONLY those. A sw.js that kept them would keep re-firing Background Sync over a dead row; one
+  // that dropped every skip would throw away items the server merely couldn't price yet.
+  test("drops permanently-rejected items, and only those", () => {
+    expect(sw).toContain("retryable === false");
+    expect(outbox).toContain("retryable === false");
+    expect(sw).toContain("dropped.map((s) => tx.store.delete(s.client_id))");
+  });
+
   test("deletes only the client_ids the server confirmed", () => {
     expect(sw).toContain("confirmed.has(i.client_id)");
     // The old bug: clearing the store on a bare 200, discarding items the server skipped.
@@ -32,5 +41,17 @@ describe("public/sw.js mirrors the outbox contract", () => {
 
   test("rejects on a failed sync so the browser retries", () => {
     expect(sw).toMatch(/if \(!res\.ok\) throw/);
+  });
+
+  // The third drift, and the worst: it disabled the handler outright rather than corrupting a row.
+  // sw.js sat at version 1 from the first build while fbb2542 moved the app to 2, and IndexedDB
+  // does not tolerate opening below the on-disk version — it rejects with VersionError, so every
+  // Background Sync event died before reading a single item. Nothing failed loudly; queued expenses
+  // simply never left the device unless a tab happened to be open. (HLA-191)
+  test("opens the database at the same version outbox.ts does", () => {
+    expect(sw).toContain(`const DB_VERSION = ${DB_VERSION};`);
+    expect(sw).toContain("openDB(DB_NAME, DB_VERSION)");
+    // A literal here is how it broke the first time.
+    expect(sw).not.toMatch(/openDB\(DB_NAME,\s*\d/);
   });
 });

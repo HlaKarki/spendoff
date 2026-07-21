@@ -10,7 +10,11 @@ export function useMe() {
         const { user } = await api.me();
         return user;
       } catch (e) {
-        if (e instanceof ApiError && e.status === 401) return null;
+        // `null` means "no session" and is what AppShell turns into the redirect to /onboard.
+        // Anything else rethrows and leaves the app on the splash screen, so accept 403 alongside
+        // 401: on THIS endpoint the two can only mean the same thing, and pinning it to exactly
+        // 401 makes a hung app the failure mode if the gate's status ever shifts.
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) return null;
         throw e;
       }
     },

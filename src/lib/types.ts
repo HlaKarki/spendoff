@@ -79,6 +79,22 @@ export interface Expense {
 }
 
 /**
+ * An item `POST /expenses/sync` refused, and whether another flush could plausibly save it
+ * (HLA-194). `retryable: false` means permanently invalid — an unknown category won't become known
+ * — so the queue may finally drop it instead of re-sending it forever. `reason`/`message` are for
+ * logs; branch on `retryable`, which needs no update when the server grows a new failure mode.
+ *
+ * Optional because a server predating the field simply omits it, and "not told" must keep meaning
+ * "keep the item".
+ */
+export interface SyncSkipped {
+  client_id: string;
+  reason: string;
+  retryable: boolean;
+  message: string;
+}
+
+/**
  * Another member's expense. Deliberately narrower than `Expense`: no `note`, because free text is
  * where the private detail lives and it never leaves its owner's account.
  */

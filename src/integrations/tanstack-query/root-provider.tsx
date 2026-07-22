@@ -1,5 +1,27 @@
-import { QueryClient } from "@tanstack/react-query";
+import { focusManager, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "../../lib/api";
+
+// TanStack Query's browser default follows `visibilitychange`, which covers switching tabs but not
+// every desktop window-focus transition. Listen to both and coalesce the pair browsers commonly
+// emit together so returning from the native app prompts exactly one reconciliation pass.
+if (typeof window !== "undefined") {
+  focusManager.setEventListener((onFocus) => {
+    let lastEventAt = Number.NEGATIVE_INFINITY;
+    const listener = () => {
+      const now = performance.now();
+      if (now - lastEventAt < 100) return;
+      lastEventAt = now;
+      onFocus();
+    };
+
+    window.addEventListener("visibilitychange", listener, false);
+    window.addEventListener("focus", listener, false);
+    return () => {
+      window.removeEventListener("visibilitychange", listener);
+      window.removeEventListener("focus", listener);
+    };
+  });
+}
 
 export function getContext() {
   const queryClient = new QueryClient({

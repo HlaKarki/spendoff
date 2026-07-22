@@ -13,6 +13,7 @@ import { DB_VERSION, SYNC_FIELDS } from "./outbox";
  */
 const sw = readFileSync(new URL("../../public/sw.js", import.meta.url), "utf8");
 const outbox = readFileSync(new URL("./outbox.ts", import.meta.url), "utf8");
+const swRegister = readFileSync(new URL("../components/SwRegister.tsx", import.meta.url), "utf8");
 
 describe("public/sw.js mirrors the outbox contract", () => {
   test.each(SYNC_FIELDS)("forwards %s on the sync payload", (field) => {
@@ -53,5 +54,12 @@ describe("public/sw.js mirrors the outbox contract", () => {
     expect(sw).toContain("openDB(DB_NAME, DB_VERSION)");
     // A literal here is how it broke the first time.
     expect(sw).not.toMatch(/openDB\(DB_NAME,\s*\d/);
+  });
+
+  test("notifies open tabs after a confirmed background write", () => {
+    const message = "spendoff:expenses-synced";
+    expect(sw).toContain(`postMessage({ type: "${message}" })`);
+    expect(swRegister).toContain(`EXPENSES_SYNCED_MESSAGE = "${message}"`);
+    expect(swRegister).toContain('addEventListener("message", onServiceWorkerMessage)');
   });
 });

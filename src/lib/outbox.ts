@@ -26,6 +26,31 @@ export interface OutboxItem {
 export const DB_VERSION = 2;
 
 let dbp: Promise<IDBPDatabase> | null = null;
+
+export interface OutboxSyncedEvent {
+  synced: number;
+}
+
+type OutboxSyncedListener = (event: OutboxSyncedEvent) => void;
+const syncedListeners = new Set<OutboxSyncedListener>();
+
+/** Subscribe to confirmed server writes, including retries kicked off outside the current screen. */
+export function onOutboxSynced(listener: OutboxSyncedListener): () => void {
+  syncedListeners.add(listener);
+  return () => syncedListeners.delete(listener);
+}
+
+function emitOutboxSynced(event: OutboxSyncedEvent): void {
+  for (const listener of syncedListeners) {
+    try {
+      listener(event);
+    } catch {
+      // Cache/UI listeners are advisory. A listener bug must never turn a confirmed server write
+      // into an apparent sync failure or leave its already-saved outbox row behind.
+    }
+  }
+}
+
 function db() {
   if (!dbp) {
     dbp = openDB(DB_NAME, DB_VERSION, {
@@ -99,6 +124,10 @@ export async function flushOutbox(): Promise<{ synced: number; remaining: number
     await Promise.all(dropped.map((s) => removeItem(s.client_id)));
     // No UI for this yet — but a silently discarded expense must at least be visible somewhere.
     for (const s of dropped) track("expense_dropped", { reason: s.reason });
+
+    // The server is now authoritative for these rows. Tell every open view to reconcile its cache;
+    // this also covers on-mount and reconnect flushes that did not originate from the current route.
+    if (confirmed.size > 0) emitOutboxSynced({ synced: confirmed.size });
 
     const settled = confirmed.size + dropped.length;
     return { synced: confirmed.size, remaining: items.length - settled };

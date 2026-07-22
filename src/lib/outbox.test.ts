@@ -72,6 +72,41 @@ describe("flushOutbox", () => {
     expect(await outbox.pending()).toHaveLength(0);
   });
 
+  test("a confirmed write announces server truth so open views can reconcile", async () => {
+    const listener = vi.fn();
+    const unsubscribe = outbox.onOutboxSynced(listener);
+    await outbox.enqueue({ ...item("a"), queued_at: "t" });
+    syncExpenses.mockResolvedValue({ synced: 1, expenses: [saved("a")] });
+
+    await outbox.flushOutbox();
+
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenCalledWith({ synced: 1 });
+
+    unsubscribe();
+    await outbox.enqueue({ ...item("b"), queued_at: "t" });
+    syncExpenses.mockResolvedValue({ synced: 1, expenses: [saved("b")] });
+    await outbox.flushOutbox();
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  test("a failed or permanently rejected write does not announce a server expense", async () => {
+    const listener = vi.fn();
+    outbox.onOutboxSynced(listener);
+    await outbox.enqueue({ ...item("a"), queued_at: "t" });
+    syncExpenses.mockRejectedValueOnce(new Error("offline"));
+    await outbox.flushOutbox();
+    expect(listener).not.toHaveBeenCalled();
+
+    syncExpenses.mockResolvedValueOnce({
+      synced: 0,
+      expenses: [],
+      skipped: [{ client_id: "a", reason: "InvalidCategory", retryable: false, message: "Unknown category." }],
+    });
+    await outbox.flushOutbox();
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   test("the currency a spend was logged in survives the queue", async () => {
     // The whole point of queuing it: an expense logged in euros on a plane must still be euros when
     // it lands. Dropping the field would silently re-denominate it into the user's base currency.

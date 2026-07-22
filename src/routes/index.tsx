@@ -150,7 +150,9 @@ function TodayScreen() {
         offline = !res.online;
         setJustPrinted(clientId);
       }
-      await qc.invalidateQueries();
+      // The outbox announces confirmed expense writes globally; repeating rules use a direct API
+      // mutation, so only that path still needs to invalidate the wider cache here.
+      if (repeat) await qc.invalidateQueries();
       setToast({ msg: savedMessage(), offline });
       setCents(0);
       setNote("");
@@ -180,7 +182,6 @@ function TodayScreen() {
   async function retrySync() {
     const { remaining } = await flushOutbox();
     setQueued(remaining);
-    await qc.invalidateQueries({ queryKey: ["expenses"] });
   }
 
   const zone = resolveTimezone(tz);

@@ -22,10 +22,12 @@ const BASE = `${API_ORIGIN}/api/v1/spendoff`;
 export class ApiError extends Error {
   status: number;
   code: string;
-  constructor(status: number, code: string, message: string) {
+  retryAfter?: number;
+  constructor(status: number, code: string, message: string, retryAfter?: number) {
     super(message);
     this.status = status;
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -46,14 +48,17 @@ async function apiFetch<T>(path: string, init?: RequestInit & { json?: unknown }
   if (!res.ok) {
     let code = "error";
     let message = res.statusText;
+    let retryAfter: number | undefined;
     try {
-      const data = (await res.json()) as { error?: string; message?: string };
-      code = data.error ?? code;
+      // Frozen routes send {error, message}; native routes send {_tag, message} (plus retryAfter on 429).
+      const data = (await res.json()) as { error?: string; _tag?: string; message?: string; retryAfter?: number };
+      code = data.error ?? data._tag ?? code;
       message = data.message ?? message;
+      retryAfter = data.retryAfter;
     } catch {
       // non-JSON error
     }
-    throw new ApiError(res.status, code, message);
+    throw new ApiError(res.status, code, message, retryAfter);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

@@ -10,7 +10,8 @@
     "react": { "runtime": "automatic" }
   },
   "rules": {
-    "react/react-in-jsx-scope": "off"
+    "react/react-in-jsx-scope": "off",
+    "no-underscore-dangle": ["warn", { "allow": ["_tag"] }]
   },
   "ignorePatterns": ["src/routeTree.gen.ts", ".output", ".wrangler", "dist", "node_modules"]
 }

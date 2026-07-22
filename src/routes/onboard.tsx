@@ -175,7 +175,13 @@ function Onboard() {
 }
 
 function errMsg(e: unknown): string {
-  if (e instanceof ApiError) return e.message;
+  if (e instanceof ApiError) {
+    if (e.status === 429) {
+      const secs = e.retryAfter ?? 0;
+      return secs > 0 ? `Too many attempts. Try again in ${secs}s.` : "Too many attempts. Please wait a moment.";
+    }
+    return e.message;
+  }
   if (e instanceof Error) {
     if (e.name === "NotAllowedError") return "Passkey prompt was dismissed. Try again.";
     return e.message;

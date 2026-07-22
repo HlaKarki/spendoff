@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { buttonVariants } from "../components/ui/button";
-import { api } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 
 export const Route = createFileRoute("/auth/magic")({
   validateSearch: (s: Record<string, unknown>) => ({ token: typeof s.token === "string" ? s.token : "" }),
@@ -29,7 +29,12 @@ function MagicConsume() {
         qc.setQueryData(["me"], user);
         navigate({ to: "/" });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "This link is invalid or expired.");
+        if (e instanceof ApiError && e.status === 429) {
+          const secs = e.retryAfter ?? 0;
+          setError(secs > 0 ? `Too many attempts. Try again in ${secs}s.` : "Too many attempts. Please wait a moment.");
+        } else {
+          setError(e instanceof Error ? e.message : "This link is invalid or expired.");
+        }
       }
     })();
   }, [token, navigate, qc]);

@@ -47,17 +47,14 @@ standings query families. Active views refetch immediately and inactive views ar
 confirmed native expense appears when the user returns to the web app without creating a second
 source of truth.
 
-## Native Apple association prerequisite
+## Native Apple association
 
 The native bundle identifier is `us.spendoff.app`, and its Expo config declares
-`webcredentials:spendoff.us` and `applinks:spendoff.us`. The remaining deployment input is the
-10-character Apple Developer **Team ID**. It is not present in either repository, and is required to
-form the AASA app identifier `<TEAM_ID>.us.spendoff.app`.
-
-Until that value is supplied, do not add a placeholder association file. The completed file must be
-served from `https://spendoff.us/.well-known/apple-app-site-association` as extensionless
-`application/json`, without a redirect. Its `applinks` rules must cover `/auth/magic`, and its
-`webcredentials.apps` entry must use the same fully qualified app identifier.
+`webcredentials:spendoff.us` and `applinks:spendoff.us`. The production association file uses the
+signed app identifier `93AV3DLH8S.us.spendoff.app`. It is served extensionless from
+`https://spendoff.us/.well-known/apple-app-site-association` as `application/json`, without a
+redirect. Universal links are deliberately limited to `/auth/magic`; shared passkey credentials use
+the same fully qualified app identifier.
 
 ## Local development
 

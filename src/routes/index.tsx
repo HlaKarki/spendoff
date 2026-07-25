@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { Delete, Check, Coins, Repeat, CalendarDays } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
@@ -404,6 +404,18 @@ function TodayScreen() {
           </div>
         )}
       </Tape>
+
+      <footer className="flex items-center justify-center gap-4 pt-8 font-mono text-[10px] font-medium uppercase tracking-wide text-faint">
+        <Link to="/privacy" className="transition hover:text-muted">
+          Privacy
+        </Link>
+        <Link to="/terms" className="transition hover:text-muted">
+          Terms
+        </Link>
+        <a href="mailto:support@spendoff.us" className="transition hover:text-muted">
+          Support
+        </a>
+      </footer>
 
       {toast && (
         <output className="fixed inset-x-0 bottom-24 z-40 mx-auto flex w-fit items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper shadow-lg">

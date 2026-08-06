@@ -12,7 +12,7 @@ import { Tape } from "../components/ui/tape";
 import { TapeLabel } from "../components/ui/tape-label";
 import { api, ApiError } from "../lib/api";
 import { browserCurrency, browserTimezone } from "../lib/format";
-import { useCurrencies, useMe } from "../lib/queries";
+import { AUTH_HINT_KEY, useCurrencies, useMe } from "../lib/queries";
 import { currentPushSubscription, disablePush, enablePush, isPushSupported } from "../lib/push";
 import { getThemePref, setThemePref, type ThemePref } from "../lib/theme";
 import { cn } from "../lib/utils";
@@ -82,6 +82,7 @@ function Settings() {
 
   async function signOut() {
     await api.logout();
+    localStorage.removeItem(AUTH_HINT_KEY);
     reset();
     await qc.invalidateQueries({ queryKey: ["me"] });
     navigate({ to: "/onboard", search: { redirect: "/" } });

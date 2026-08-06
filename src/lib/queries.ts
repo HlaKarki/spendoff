@@ -3,6 +3,12 @@ import { api, ApiError } from "./api";
 import { LIVE_SERVER_QUERY_REFRESH, SERVER_QUERY_REFRESH } from "./query-refresh";
 import type { Expense } from "./types";
 
+/* The session cookie is httpOnly, so the client can't know "probably signed in"
+ * before `useMe` resolves. This hint is that pre-paint signal: set once a session
+ * is confirmed, cleared on sign-out or a dead session. It only picks which shell
+ * "/" renders first — AppShell still verifies the real session. */
+export const AUTH_HINT_KEY = "spendoff-authed";
+
 export function useMe() {
   return useQuery({
     queryKey: ["me"],

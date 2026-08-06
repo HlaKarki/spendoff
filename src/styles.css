@@ -162,6 +162,22 @@ body {
     opacity: 0;
   }
 
+  /* Landing: receipt lines print in as the slip scrolls into view. Lines are
+   * visible by default; `.land-print` (added by JS only when the slip starts
+   * below the fold) hides them until `.printed` lands, so no-JS, crawler, and
+   * reduced-motion renders never see a blank slip. */
+  .land-print > * {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      transform 300ms cubic-bezier(0.25, 0.9, 0.3, 1),
+      opacity 240ms ease-out;
+  }
+  .land-print.printed > * {
+    opacity: 1;
+    transform: none;
+  }
+
   /* Stamp moment: the verdict thunks down when a month settles. */
   .stamp-thunk {
     animation: stamp-thunk 240ms cubic-bezier(0.2, 0.9, 0.3, 1);
@@ -187,6 +203,11 @@ body {
     .stamp-thunk {
       transition: none;
       animation: none;
+    }
+    .land-print > * {
+      transition: none;
+      opacity: 1;
+      transform: none;
     }
   }
 }

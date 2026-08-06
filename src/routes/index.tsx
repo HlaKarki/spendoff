@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Delete, Check, Coins, Repeat, CalendarDays } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
+import { Landing } from "../components/Landing";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { PulseLine } from "../components/PulseLine";
 import { Button } from "../components/ui/button";
@@ -29,7 +30,7 @@ import {
   todayInTz,
 } from "../lib/format";
 import { flushOutbox, logExpense, pending } from "../lib/outbox";
-import { useCategories, useCurrencies, useDayExpenses, useMe } from "../lib/queries";
+import { AUTH_HINT_KEY, useCategories, useCurrencies, useDayExpenses, useMe } from "../lib/queries";
 import { cn } from "../lib/utils";
 
 function ordinal(n: number): string {
@@ -41,14 +42,42 @@ function ordinal(n: number): string {
 /* Counter IA (HLA-147): the register IS the home screen. You open the app,
  * you're logging — the pulse line above answers "am I winning?" in one glance. */
 export const Route = createFileRoute("/")({
-  component: () => (
-    <ClientOnly>
-      <AppShell>
-        <TodayScreen />
-      </AppShell>
-    </ClientOnly>
-  ),
+  component: IndexRoute,
 });
+
+/* SSR can't pick a shell — the session cookie is httpOnly and auth is a client
+ * query — so the server always emits the landing (the crawlable surface). The
+ * localStorage hint swaps confirmed users to the app before first paint, so a
+ * daily open never flashes marketing; `useMe` then settles who's right. */
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+function IndexRoute() {
+  const me = useMe();
+  const [app, setApp] = useState(false);
+
+  useIsoLayoutEffect(() => {
+    if (localStorage.getItem(AUTH_HINT_KEY)) setApp(true);
+  }, []);
+
+  useEffect(() => {
+    if (me.data) {
+      localStorage.setItem(AUTH_HINT_KEY, "1");
+      setApp(true);
+    } else if (me.data === null) {
+      localStorage.removeItem(AUTH_HINT_KEY);
+    }
+  }, [me.data]);
+
+  if (app)
+    return (
+      <ClientOnly>
+        <AppShell>
+          <TodayScreen />
+        </AppShell>
+      </ClientOnly>
+    );
+  return <Landing />;
+}
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "del"] as const;
 

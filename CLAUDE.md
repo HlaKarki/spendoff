@@ -45,7 +45,7 @@ These carry most of the domain complexity. Get them wrong and the bug is silent.
 
 `src/lib/outbox.ts` is the single write path for a spend: `logExpense()` → enqueue into an IndexedDB store keyed by `client_id` → register Background Sync → try to flush immediately. `flushOutbox()` POSTs the whole queue to `/expenses/sync` and **deletes only the rows the server echoed back** — the server skips items it can't accept (e.g. an unknown category), and removing an unconfirmed item would lose it silently. Dedupe is server-side on `(user_id, client_id)`, so a replay never double-inserts.
 
-`public/sw.js` re-implements that flush for the Background Sync event. It is a **hand-maintained mirror** — change one and you must change the other. (It currently clears the whole store on a 200, which is the data-loss case `outbox.ts` deliberately avoids.)
+`public/sw.js` re-implements that flush for the Background Sync event. It is a **hand-maintained mirror** — change one and you must change the other. Both now delete only the items the server confirmed, plus the ones it reports as permanently unacceptable (HLA-191, 2026-07-19). An earlier `sw.js` cleared the whole store on a 200; don't reintroduce that — it's the data-loss case `outbox.ts` deliberately avoids.
 
 ## UI conventions
 

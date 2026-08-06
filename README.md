@@ -2,7 +2,7 @@
 
 > A competitive personal-spending tracker. Log in two taps, settle it monthly, lowest spender wins.
 
-**Live:** [spendoff.us](https://spendoff.us) · **Writeup:** [hla.dev/builds/spendoff](https://hla.dev/builds/spendoff)
+**Live:** [spendoff.us](https://spendoff.us) · **iPhone:** [App Store](https://apps.apple.com/us/app/spendoff/id6794655495) · **Writeup:** [hla.dev/builds/spendoff](https://hla.dev/builds/spendoff)
 
 ![Spendoff](assets/banner.png)
 

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { StandingsRows } from "../components/Standings";
-import { Button } from "../components/ui/button";
+import { Button, buttonVariants } from "../components/ui/button";
 import { EmptyState } from "../components/ui/empty-state";
 import { Field } from "../components/ui/field";
 import { Input } from "../components/ui/input";
@@ -134,6 +134,8 @@ function SheetPanel({ kind, onClose }: { kind: "create" | "join"; onClose: () =>
   const [currencyEdit, setCurrencyEdit] = useState<string | null>(null);
   const currency = currencyEdit ?? baseCurrency;
 
+  const isGuest = useMe().data?.is_anonymous ?? false;
+
   const create = useMutation({
     mutationFn: () => api.createBattle({ name: name.trim(), currency }),
     onSuccess: async (res) => {
@@ -160,7 +162,9 @@ function SheetPanel({ kind, onClose }: { kind: "create" | "join"; onClose: () =>
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
         <h2 className="mb-4 text-lg font-bold">{kind === "create" ? "Create a battle" : "Join a battle"}</h2>
-        {kind === "create" ? (
+        {isGuest ? (
+          <AccountRequired />
+        ) : kind === "create" ? (
           <>
             <Field label="Battle name">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Sibling Showdown" />
@@ -197,22 +201,42 @@ function SheetPanel({ kind, onClose }: { kind: "create" | "join"; onClose: () =>
           </Field>
         )}
         {error && <p className="mt-2 text-sm text-stamp">{error}</p>}
-        <Button
-          full
-          size="lg"
-          className="mt-4"
-          onClick={() => (kind === "create" ? create.mutate() : join.mutate())}
-          disabled={kind === "create" ? !name.trim() || create.isPending : !code.trim() || join.isPending}
-        >
-          {kind === "create"
-            ? create.isPending
-              ? "Creating…"
-              : "Create battle"
-            : join.isPending
-              ? "Joining…"
-              : "Join battle"}
-        </Button>
+        {!isGuest && (
+          <Button
+            full
+            size="lg"
+            className="mt-4"
+            onClick={() => (kind === "create" ? create.mutate() : join.mutate())}
+            disabled={kind === "create" ? !name.trim() || create.isPending : !code.trim() || join.isPending}
+          >
+            {kind === "create"
+              ? create.isPending
+                ? "Creating…"
+                : "Create battle"
+              : join.isPending
+                ? "Joining…"
+                : "Join battle"}
+          </Button>
+        )}
       </div>
+    </div>
+  );
+}
+
+function AccountRequired() {
+  return (
+    <div>
+      <p className="text-sm text-muted">
+        Battles need an account, so your rivals know who they're up against. Your guest ledger comes with you when you
+        create one.
+      </p>
+      <Link
+        to="/onboard"
+        search={{ redirect: "/battles", mode: "create" }}
+        className={buttonVariants({ size: "lg", full: true, className: "mt-4" })}
+      >
+        Create account
+      </Link>
     </div>
   );
 }

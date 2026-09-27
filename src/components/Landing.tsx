@@ -1,10 +1,13 @@
-import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { buttonVariants } from "./ui/button";
+import { Button, buttonVariants } from "./ui/button";
 import { RuleLine } from "./ui/rule-line";
 import { Stamp } from "./ui/stamp";
 import { Tape } from "./ui/tape";
 import { TapeLabel } from "./ui/tape-label";
+import { ApiError } from "../lib/api";
+import { startGuest } from "../lib/guest";
 import { cn } from "../lib/utils";
 
 /* The logged-out marketing surface at "/" — the only screen a crawler ever sees,
@@ -168,6 +171,39 @@ function FeatureReceipt() {
   );
 }
 
+/** Starts a guest account so a visitor can log a spend before deciding to sign up. */
+function StartFree({ className }: { className?: string }) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function start() {
+    setBusy(true);
+    setError(null);
+    try {
+      await startGuest(qc);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 429) {
+        setError("Too many new guests from here. Try again in a minute.");
+        setBusy(false);
+        return;
+      }
+      // A broken guest path must never block sign-up, so fall back to the account form.
+      navigate({ to: "/onboard", search: { redirect: "/" } });
+    }
+  }
+
+  return (
+    <span className="inline-flex flex-col items-center gap-2">
+      <Button size="lg" className={className} onClick={start} disabled={busy}>
+        {busy ? "Starting…" : "Start free"}
+      </Button>
+      {error && <span className="text-sm text-stamp">{error}</span>}
+    </span>
+  );
+}
+
 export function Landing() {
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -195,13 +231,7 @@ export function Landing() {
               1st the lowest total takes it.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link
-                to="/onboard"
-                search={{ redirect: "/" }}
-                className={buttonVariants({ size: "lg", className: "px-7" })}
-              >
-                Start free
-              </Link>
+              <StartFree className="px-7" />
               <a href="#how" className={buttonVariants({ variant: "ghost", size: "lg" })}>
                 See how it works
               </a>
@@ -250,13 +280,7 @@ export function Landing() {
           <p className="mx-auto mt-4 max-w-[42ch] text-pretty leading-relaxed text-muted">
             Every unlogged day is a point for the other side. Start the duel. Your rival could use the head start.
           </p>
-          <Link
-            to="/onboard"
-            search={{ redirect: "/" }}
-            className={buttonVariants({ size: "lg", className: "mt-9 px-8" })}
-          >
-            Start free
-          </Link>
+          <StartFree className="mt-9 px-8" />
         </section>
       </main>
 

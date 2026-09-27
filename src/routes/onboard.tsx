@@ -8,11 +8,14 @@ import { Input } from "../components/ui/input";
 import { Tape } from "../components/ui/tape";
 import { api, ApiError } from "../lib/api";
 import { browserCurrency, browserTimezone } from "../lib/format";
+import { refreshAfterAuth } from "../lib/guest";
+import { useMe } from "../lib/queries";
 import type { User } from "../lib/types";
 
 export const Route = createFileRoute("/onboard")({
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { redirect: string; mode?: Mode } => ({
     redirect: typeof s.redirect === "string" ? s.redirect : "/",
+    mode: s.mode === "create" || s.mode === "signin" ? s.mode : undefined,
   }),
   component: Onboard,
 });
@@ -20,10 +23,11 @@ export const Route = createFileRoute("/onboard")({
 type Mode = "signin" | "create";
 
 function Onboard() {
-  const { redirect } = Route.useSearch();
+  const { redirect, mode: initialMode } = Route.useSearch();
+  const me = useMe();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [mode, setMode] = useState<Mode>("signin");
+  const [mode, setMode] = useState<Mode>(initialMode ?? "signin");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,7 +36,7 @@ function Onboard() {
 
   // Seed the user into the cache synchronously (no refetch race), then go somewhere safe.
   function finishAuth(user: User) {
-    qc.setQueryData(["me"], user);
+    refreshAfterAuth(qc, user);
     const safe = redirect && !redirect.startsWith("/onboard") && !redirect.startsWith("/auth") ? redirect : "/";
     navigate({ to: safe });
   }
@@ -99,6 +103,11 @@ function Onboard() {
       <div className="mb-10 text-center">
         <h1 className="font-mono text-4xl font-bold uppercase tracking-[0.18em] text-ink">Spendoff</h1>
         <p className="mt-3 text-muted">Log your spending. Settle it monthly. Spend less, win. 🏆</p>
+        {me.data?.is_anonymous && (
+          <p className="mt-3 text-sm text-ink">
+            Your guest ledger comes with you. Signing into an account you already have adds it to that one.
+          </p>
+        )}
       </div>
 
       <div className="mb-6 flex rounded-xl border border-line bg-paper p-1">

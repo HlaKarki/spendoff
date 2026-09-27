@@ -4,12 +4,16 @@ export type WinRule = "lowest_total" | "most_under_budget" | "lowest_with_catego
 
 export interface User {
   id: string;
-  email: string;
+  /** Null while the user is a guest. */
+  email: string | null;
   display_name: string;
   timezone: string;
   /** The currency this user's own totals are denominated in. Battles score in the battle's currency. */
   base_currency: string;
   created_at: string | null;
+  is_anonymous: boolean;
+  /** When a guest's session, and so their ledger, stops being reachable. Null for full accounts. */
+  guest_expires_at: string | null;
 }
 
 export interface Category {

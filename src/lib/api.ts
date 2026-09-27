@@ -77,6 +77,9 @@ export const api = {
       json,
     }),
   logout: () => apiFetch<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+  deleteMe: () => apiFetch<{ ok: boolean }>("/auth/me", { method: "DELETE" }),
+  startGuest: (json: { timezone?: string; base_currency?: string }) =>
+    apiFetch<{ user: User }>("/auth/guest", { method: "POST", json }),
 
   // `timezone` / `base_currency` are device-derived hints the server takes as defaults for the new
   // account; both are editable in Settings afterwards.

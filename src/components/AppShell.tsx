@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { identify } from "../integrations/posthog";
+import { formatGuestExpiry } from "../lib/guest";
 import { useMe } from "../lib/queries";
 import { cn } from "../lib/utils";
 import { BarChart3, Plus, Settings, Swords } from "./icons";
@@ -45,8 +46,28 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-bg">
-      <main className="flex-1 px-4 pb-28 pt-[max(1rem,env(safe-area-inset-top))]">{children}</main>
+      <main className="flex-1 px-4 pb-28 pt-[max(1rem,env(safe-area-inset-top))]">
+        {me.data.is_anonymous && <GuestBanner expiresAt={me.data.guest_expires_at} />}
+        {children}
+      </main>
       <BottomNav />
+    </div>
+  );
+}
+
+function GuestBanner({ expiresAt }: { expiresAt: string | null }) {
+  const location = useLocation();
+  const until = expiresAt ? formatGuestExpiry(expiresAt) : null;
+  return (
+    <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-dashed border-rule bg-paper px-3 py-2 font-mono text-[11px] uppercase tracking-wide text-muted">
+      <span>Guest ledger{until ? ` · kept until ${until}` : ""}</span>
+      <Link
+        to="/onboard"
+        search={{ redirect: location.pathname, mode: "create" }}
+        className="shrink-0 font-semibold text-accent hover:underline"
+      >
+        Save it
+      </Link>
     </div>
   );
 }

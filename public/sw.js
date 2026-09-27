@@ -100,6 +100,16 @@ async function flushOutbox() {
   await Promise.all(dropped.map((s) => tx.store.delete(s.client_id)));
   await tx.done;
 
+  // A Background Sync can finish without any page-side outbox code running. Tell controlled tabs
+  // that server truth changed so React Query can invalidate the ledger, analytics, and standings.
+  if (confirmed.size > 0) {
+    const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of clients) {
+      // oxlint-disable-next-line unicorn/require-post-message-target-origin -- ServiceWorker Client.postMessage has no targetOrigin parameter
+      client.postMessage({ type: "spendoff:expenses-synced" });
+    }
+  }
+
   // A still-queued item is one that might yet succeed. Ask for another sync so it isn't stranded
   // until the next log — by then the rate feed may have caught up. Items we just dropped don't
   // count: retrying for their sake is the loop this whole field exists to end.

@@ -5,14 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ClientOnly } from "../components/ClientOnly";
 import { reset } from "../integrations/posthog";
-import { Button } from "../components/ui/button";
+import { Button, buttonVariants } from "../components/ui/button";
 import { RuleLine } from "../components/ui/rule-line";
 import { SwitchIndicator } from "../components/ui/switch";
 import { Tape } from "../components/ui/tape";
 import { TapeLabel } from "../components/ui/tape-label";
 import { api, ApiError } from "../lib/api";
 import { browserCurrency, browserTimezone } from "../lib/format";
-import { useCurrencies, useMe } from "../lib/queries";
+import { formatGuestExpiry } from "../lib/guest";
+import { AUTH_HINT_KEY, useCurrencies, useMe } from "../lib/queries";
 import { currentPushSubscription, disablePush, enablePush, isPushSupported } from "../lib/push";
 import { getThemePref, setThemePref, type ThemePref } from "../lib/theme";
 import { cn } from "../lib/utils";
@@ -39,6 +40,8 @@ function Settings() {
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const [testMsg, setTestMsg] = useState<string | null>(null);
   const [testBusy, setTestBusy] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const isGuest = me.data?.is_anonymous ?? false;
 
   useEffect(() => {
     if (isPushSupported()) currentPushSubscription().then((s) => setPushOn(!!s));
@@ -81,10 +84,14 @@ function Settings() {
   }
 
   async function signOut() {
+    // Nothing else can ever reach a guest's ledger once the session is gone, so delete it outright.
+    if (isGuest) await api.deleteMe();
     await api.logout();
+    localStorage.removeItem(AUTH_HINT_KEY);
     reset();
     await qc.invalidateQueries({ queryKey: ["me"] });
-    navigate({ to: "/onboard", search: { redirect: "/" } });
+    if (isGuest) navigate({ to: "/" });
+    else navigate({ to: "/onboard", search: { redirect: "/" } });
   }
 
   return (
@@ -97,8 +104,26 @@ function Settings() {
       <Tape className="pt-5">
         <Row label="Name" value={me.data?.display_name ?? "—"} mono={false} />
         <RuleLine className="my-1" />
-        <Row label="Email" value={me.data?.email ?? "—"} />
+        <Row label="Email" value={me.data?.email ?? (isGuest ? "Not set" : "—")} />
       </Tape>
+
+      {isGuest && (
+        <Tape className="pt-5">
+          <TapeLabel className="text-left">Guest ledger</TapeLabel>
+          <p className="mt-2 text-sm text-muted">
+            Everything you log is saved
+            {me.data?.guest_expires_at ? ` until ${formatGuestExpiry(me.data.guest_expires_at)}` : ""}. Create an
+            account to keep it for good, use it on other devices, and start battles.
+          </p>
+          <Link
+            to="/onboard"
+            search={{ redirect: "/settings", mode: "create" }}
+            className={buttonVariants({ size: "sm", full: true, className: "mt-3" })}
+          >
+            Create account
+          </Link>
+        </Tape>
+      )}
 
       <ThemeSection />
 
@@ -144,13 +169,30 @@ function Settings() {
         </Button>
         {testMsg && <p className="mt-2 text-sm text-muted">{testMsg}</p>}
         <p className="mt-2 text-xs text-faint">
-          On iPhone, add Spendoff to your Home Screen first to receive push. Otherwise notifications arrive by email.
+          On iPhone, add Spendoff to your Home Screen first to receive push.{" "}
+          {isGuest ? "Guests have no email, so push is the only channel." : "Otherwise notifications arrive by email."}
         </p>
       </Tape>
 
-      <Button variant="ghost" full onClick={signOut} className="text-stamp">
-        <LogOut className="size-4" /> Sign out
-      </Button>
+      {isGuest && confirmDiscard ? (
+        <Tape className="pt-5">
+          <p className="text-sm text-ink">
+            Leaving deletes this guest ledger for good. There's no account to sign back into.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button variant="outline" size="sm" full onClick={() => setConfirmDiscard(false)}>
+              Keep it
+            </Button>
+            <Button variant="ghost" size="sm" full onClick={signOut} className="text-stamp">
+              Delete and leave
+            </Button>
+          </div>
+        </Tape>
+      ) : (
+        <Button variant="ghost" full onClick={isGuest ? () => setConfirmDiscard(true) : signOut} className="text-stamp">
+          <LogOut className="size-4" /> {isGuest ? "Discard guest ledger" : "Sign out"}
+        </Button>
+      )}
     </div>
   );
 }

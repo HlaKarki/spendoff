@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { buttonVariants } from "../components/ui/button";
 import { ApiError, api } from "../lib/api";
+import { refreshAfterAuth } from "../lib/guest";
 
 export const Route = createFileRoute("/auth/magic")({
   validateSearch: (s: Record<string, unknown>) => ({ token: typeof s.token === "string" ? s.token : "" }),
@@ -26,7 +27,7 @@ function MagicConsume() {
       }
       try {
         const { user } = await api.magicVerify({ token });
-        qc.setQueryData(["me"], user);
+        refreshAfterAuth(qc, user);
         navigate({ to: "/" });
       } catch (e) {
         if (e instanceof ApiError && e.status === 429) {

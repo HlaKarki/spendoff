@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["93AV3DLH8S.us.spendoff.app"],
+        "components": [
+          {
+            "/": "/auth/magic",
+            "comment": "Open Spendoff email magic links in the native app."
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["93AV3DLH8S.us.spendoff.app"]
+  }
+}

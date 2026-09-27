@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecurringRouteImport } from './routes/recurring'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -22,6 +24,11 @@ import { Route as BattlesIdIndexRouteImport } from './routes/battles.$id.index'
 import { Route as BattlesIdResultsYmRouteImport } from './routes/battles.$id.results.$ym'
 import { Route as BattlesIdMembersUserIdRouteImport } from './routes/battles.$id.members.$userId'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -30,6 +37,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const RecurringRoute = RecurringRouteImport.update({
   id: '/recurring',
   path: '/recurring',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardRoute = OnboardRouteImport.update({
@@ -88,8 +100,10 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/log': typeof LogRoute
   '/onboard': typeof OnboardRoute
+  '/privacy': typeof PrivacyRoute
   '/recurring': typeof RecurringRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/auth/magic': typeof AuthMagicRoute
   '/battles/$id': typeof BattlesIdRouteWithChildren
   '/battles/': typeof BattlesIndexRoute
@@ -102,8 +116,10 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/log': typeof LogRoute
   '/onboard': typeof OnboardRoute
+  '/privacy': typeof PrivacyRoute
   '/recurring': typeof RecurringRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/auth/magic': typeof AuthMagicRoute
   '/battles': typeof BattlesIndexRoute
   '/battles/$id': typeof BattlesIdIndexRoute
@@ -116,8 +132,10 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/log': typeof LogRoute
   '/onboard': typeof OnboardRoute
+  '/privacy': typeof PrivacyRoute
   '/recurring': typeof RecurringRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/auth/magic': typeof AuthMagicRoute
   '/battles/$id': typeof BattlesIdRouteWithChildren
   '/battles/': typeof BattlesIndexRoute
@@ -132,8 +150,10 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/log'
     | '/onboard'
+    | '/privacy'
     | '/recurring'
     | '/settings'
+    | '/terms'
     | '/auth/magic'
     | '/battles/$id'
     | '/battles/'
@@ -146,8 +166,10 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/log'
     | '/onboard'
+    | '/privacy'
     | '/recurring'
     | '/settings'
+    | '/terms'
     | '/auth/magic'
     | '/battles'
     | '/battles/$id'
@@ -159,8 +181,10 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/log'
     | '/onboard'
+    | '/privacy'
     | '/recurring'
     | '/settings'
+    | '/terms'
     | '/auth/magic'
     | '/battles/$id'
     | '/battles/'
@@ -174,8 +198,10 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   LogRoute: typeof LogRoute
   OnboardRoute: typeof OnboardRoute
+  PrivacyRoute: typeof PrivacyRoute
   RecurringRoute: typeof RecurringRoute
   SettingsRoute: typeof SettingsRoute
+  TermsRoute: typeof TermsRoute
   AuthMagicRoute: typeof AuthMagicRoute
   BattlesIdRoute: typeof BattlesIdRouteWithChildren
   BattlesIndexRoute: typeof BattlesIndexRoute
@@ -183,6 +209,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -195,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/recurring'
       fullPath: '/recurring'
       preLoaderRoute: typeof RecurringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboard': {
@@ -291,8 +331,10 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   LogRoute: LogRoute,
   OnboardRoute: OnboardRoute,
+  PrivacyRoute: PrivacyRoute,
   RecurringRoute: RecurringRoute,
   SettingsRoute: SettingsRoute,
+  TermsRoute: TermsRoute,
   AuthMagicRoute: AuthMagicRoute,
   BattlesIdRoute: BattlesIdRouteWithChildren,
   BattlesIndexRoute: BattlesIndexRoute,

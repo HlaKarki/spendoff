@@ -1,5 +1,4 @@
 import { api } from "./api";
-import { flushOutbox } from "./outbox";
 
 export function isPushSupported(): boolean {
   return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
@@ -14,13 +13,12 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return out;
 }
 
-/** Register the service worker once (client-only). Also kicks an outbox flush. */
+/** Register the service worker once (client-only). SwRegister owns the subsequent outbox flush. */
 export async function registerServiceWorker(): Promise<void> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   try {
     await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
-    void flushOutbox();
   } catch (err) {
     console.error("SW registration failed", err);
   }

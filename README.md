@@ -2,7 +2,7 @@
 
 > A competitive personal-spending tracker. Log in two taps, settle it monthly, lowest spender wins.
 
-**Live:** [spendoff.us](https://spendoff.us) · **Writeup:** [hla.dev/builds/spendoff](https://hla.dev/builds/spendoff)
+**Live:** [spendoff.us](https://spendoff.us) · **iPhone:** [App Store](https://apps.apple.com/us/app/spendoff/id6794655495) · **Writeup:** [hla.dev/builds/spendoff](https://hla.dev/builds/spendoff)
 
 ![Spendoff](assets/banner.png)
 
@@ -20,6 +20,8 @@ Spendoff is a PWA where you and your friends or family each log your own spendin
 - **Passwordless auth.** Passkeys (WebAuthn) with an email magic-link fallback for new devices.
 - **A pure scoring engine.** Three win rules, ties, zero-log handling, per-category winners, trends, and callouts, all in one deterministic function. Two players render as a head-to-head; three-plus becomes a leaderboard.
 - **Installable PWA.** Web app manifest, hand-rolled service worker, and web push.
+- **Cross-device convergence.** D1 stays authoritative; live views refresh on focus and poll only
+  while visible, while confirmed background outbox writes invalidate every affected cache.
 
 ## Stack
 
@@ -32,6 +34,27 @@ This repo is the **frontend**:
 The **backend** (auth, the scoring engine, cron-driven month close, notifications) runs as a [Hono](https://hono.dev) + [chanfana](https://chanfana.com) module on Cloudflare Workers with **D1** (SQLite) and **KV**, deployed as part of a private shared backend. In production the browser only talks to `spendoff.us`: a custom server entry forwards `/api/v1/spendoff/*` to that backend over a Cloudflare **service binding**, so the API stays same-origin (first-party cookies, no CORS).
 
 > The backend isn't included in this repo, so the app won't run end to end from a clean clone without one. The frontend code, offline queue, PWA, and UI are all here.
+
+## Cross-device data freshness
+
+D1 is the authoritative ledger. Dynamic authenticated queries always refetch when the tab becomes
+visible, the browser window regains focus, or connectivity returns. Expense, analytics, standings,
+and shared-history views also poll every 15 seconds while mounted; TanStack Query suppresses that
+polling in hidden or offline tabs.
+
+Successful page-side and service-worker outbox flushes invalidate the expense, analytics, and
+standings query families. Active views refetch immediately and inactive views are marked stale, so a
+confirmed native expense appears when the user returns to the web app without creating a second
+source of truth.
+
+## Native Apple association
+
+The native bundle identifier is `us.spendoff.app`, and its Expo config declares
+`webcredentials:spendoff.us` and `applinks:spendoff.us`. The production association file uses the
+signed app identifier `93AV3DLH8S.us.spendoff.app`. It is served extensionless from
+`https://spendoff.us/.well-known/apple-app-site-association` as `application/json`, without a
+redirect. Universal links are deliberately limited to `/auth/magic`; shared passkey credentials use
+the same fully qualified app identifier.
 
 ## Local development
 

@@ -19,3 +19,6 @@ docs/
 # Playwright artifacts — regenerated on every run.
 test-results/
 playwright-report/
+
+# Marketing renders — re-shot from the running app; the native repo ignores its output/ too.
+output/

@@ -1,6 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "./api";
+import { LIVE_SERVER_QUERY_REFRESH, SERVER_QUERY_REFRESH } from "./query-refresh";
 import type { Expense } from "./types";
+
+/* The session cookie is httpOnly, so the client can't know "probably signed in"
+ * before `useMe` resolves. This hint is that pre-paint signal: set once a session
+ * is confirmed, cleared on sign-out or a dead session. It only picks which shell
+ * "/" renders first — AppShell still verifies the real session. */
+export const AUTH_HINT_KEY = "spendoff-authed";
 
 export function useMe() {
   return useQuery({
@@ -20,6 +27,7 @@ export function useMe() {
     },
     retry: false,
     staleTime: 30_000,
+    ...SERVER_QUERY_REFRESH,
   });
 }
 
@@ -61,6 +69,7 @@ export function useBattles() {
   return useQuery({
     queryKey: ["battles"],
     queryFn: async () => (await api.listBattles()).battles,
+    ...SERVER_QUERY_REFRESH,
   });
 }
 
@@ -69,6 +78,7 @@ export function useBattle(id: string) {
     queryKey: ["battle", id],
     queryFn: () => api.getBattle(id),
     enabled: !!id,
+    ...SERVER_QUERY_REFRESH,
   });
 }
 
@@ -77,6 +87,7 @@ export function useStandings(id: string, yearMonth?: string) {
     queryKey: ["standings", id, yearMonth ?? "current"],
     queryFn: () => api.standings(id, yearMonth),
     enabled: !!id,
+    ...LIVE_SERVER_QUERY_REFRESH,
   });
 }
 
@@ -93,6 +104,7 @@ export function useMemberHistory(id: string, userId: string, yearMonth: string) 
     enabled: !!id && !!userId && !!yearMonth,
     staleTime: 0,
     gcTime: 0,
+    ...LIVE_SERVER_QUERY_REFRESH,
   });
 }
 
@@ -101,6 +113,7 @@ export function useResults(id: string) {
     queryKey: ["results", id],
     queryFn: async () => (await api.listResults(id)).results,
     enabled: !!id,
+    ...SERVER_QUERY_REFRESH,
   });
 }
 
@@ -109,6 +122,7 @@ export function useResult(id: string, yearMonth: string) {
     queryKey: ["result", id, yearMonth],
     queryFn: async () => (await api.getResult(id, yearMonth)).result,
     enabled: !!id && !!yearMonth,
+    ...SERVER_QUERY_REFRESH,
   });
 }
 
@@ -116,6 +130,7 @@ export function useAnalytics(params?: { year_month?: string; months?: number }) 
   return useQuery({
     queryKey: ["analytics", params?.year_month ?? "current", params?.months ?? 6],
     queryFn: () => api.analytics(params),
+    ...LIVE_SERVER_QUERY_REFRESH,
   });
 }
 
@@ -123,6 +138,7 @@ export function useRecurring() {
   return useQuery({
     queryKey: ["recurring"],
     queryFn: async () => (await api.listRecurring()).recurring,
+    ...SERVER_QUERY_REFRESH,
   });
 }
 
@@ -133,6 +149,7 @@ export function useDayExpenses(day: string | null, categoryId?: string) {
     queryKey: ["expenses", "day", day ?? "none", categoryId ?? "all"],
     enabled: !!day,
     placeholderData: keepPreviousData,
+    ...LIVE_SERVER_QUERY_REFRESH,
     queryFn: async () => {
       const all: Expense[] = [];
       let cursor: string | undefined;
